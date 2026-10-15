@@ -1,26 +1,22 @@
 # IssuePilot
 
-An AI agent for investigating GitHub issues and posting evidence-based technical
-analysis to the original issue.
+IssuePilot is intended to be an autonomous AI agent that investigates newly opened
+GitHub issues and posts evidence-based technical analysis and solution suggestions
+directly to the original issue.
 
-## Intended workflow
+## Product intent
 
-1. A new issue triggers a GitHub Actions workflow.
-2. IssuePilot Core receives the issue and repository context.
-3. The LLM directs the investigation using tools to search the repository, read
-   source files, and inspect relevant issues and pull requests.
-4. The agent posts findings, supporting file references, proposed solutions,
-   suggested verification steps, and remaining uncertainties to the issue.
+The product direction is GitHub Actions + Claude Code, with each user using their
+own Claude subscription. The intended experience requires no separate server and
+is straightforward for repository owners to adopt and use themselves.
 
-## Design direction
+The agent should go beyond the issue description: investigate source code, the
+repository structure, past issues, pull requests, and other relevant context. It
+should independently direct its research and explain its findings, supporting
+evidence, proposed solutions, and remaining uncertainties in the issue comment.
 
-- **Python core:** investigation logic independent of the GitHub Actions runner.
-- **GitHub Actions:** run from the repository without a separate server.
-- **Bring your own key (BYOK):** users supply their own model API credentials.
-- **Bounded autonomy:** explicit limits on research time, tool calls, and cost.
-- **Evidence-based output:** distinguish observed facts from hypotheses.
-- **Safe investigation:** treat repository and issue content as untrusted input;
-  keep credentials out of model context and logs.
+The goal is a reliable, affordable agent useful in real software projects, with
+clear limits and honest communication about what it could and could not verify.
 
 ## Initial scope
 
@@ -29,10 +25,7 @@ creation, and execution of repository code are outside the initial scope.
 
 ## Development approach
 
-Build in small, explainable steps. Discuss each component and its tradeoffs
-before implementation, then inspect its code and behavior together. Start with
-reviewable local output before enabling comments on GitHub.
-
-Define representative issue scenarios and what makes an analysis useful before
-building the investigation loop. Select libraries and a model provider after
-checking the capabilities needed for the first working example.
+Build in small, explainable steps so Berke can follow and understand the project
+from beginning to end without having to write all the code himself. Discuss each
+step before implementation, then inspect its behavior together. Define what a
+useful analysis looks like through concrete issue examples.
