@@ -1,0 +1,13 @@
+[project]
+name = "issuepilot"
+version = "0.2.0"
+description = "Verify, render and publish a Claude Code issue analysis on GitHub"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

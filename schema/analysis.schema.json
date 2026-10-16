@@ -1,0 +1,95 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kind",
+    "confidence",
+    "headline",
+    "fix_summary",
+    "uncertainty",
+    "explanation",
+    "evidence",
+    "related",
+    "suggested_fixes",
+    "verification_steps",
+    "assumptions",
+    "open_questions"
+  ],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": ["bug_analysis", "needs_info", "not_a_bug"],
+      "description": "bug_analysis when a cause was investigated, needs_info when the issue lacks the information to start, not_a_bug when the behaviour is intended"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Confidence in the cause stated in headline"
+    },
+    "headline": {
+      "type": "string",
+      "description": "Shown first. The cause in at most two short sentences, plain words, no more than 300 characters. For needs_info: what is missing, in one sentence."
+    },
+    "fix_summary": {
+      "type": "string",
+      "description": "Shown first. The recommended fix in one or two sentences, no more than 250 characters. Empty string when there is no fix to suggest."
+    },
+    "uncertainty": {
+      "type": "string",
+      "description": "Shown first. The most important thing you could not verify, in one sentence, no more than 200 characters."
+    },
+    "explanation": {
+      "type": "string",
+      "description": "Shown in the collapsed details. How the problem happens, step by step, in at most 6 short sentences."
+    },
+    "evidence": {
+      "type": "array",
+      "description": "At most 3 items, strongest first. The first item is shown as the location of the problem.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "start_line", "end_line", "quote", "why"],
+        "properties": {
+          "path": {"type": "string", "description": "Repository-relative file path"},
+          "start_line": {"type": "integer", "minimum": 1},
+          "end_line": {"type": "integer", "minimum": 1},
+          "quote": {"type": "string", "description": "Verbatim text from those lines, at most 3 lines"},
+          "why": {"type": "string", "description": "What this code shows, in one sentence"}
+        }
+      }
+    },
+    "related": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "ref", "why"],
+        "properties": {
+          "kind": {"type": "string", "enum": ["issue", "pull_request", "commit"]},
+          "ref": {"type": "string", "description": "Issue or pull request number such as #12, or a commit SHA of at least 7 characters"},
+          "why": {"type": "string", "description": "One sentence"}
+        }
+      }
+    },
+    "suggested_fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "description", "files"],
+        "properties": {
+          "title": {"type": "string"},
+          "description": {"type": "string", "description": "At most 3 sentences"},
+          "files": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "verification_steps": {"type": "array", "items": {"type": "string"}},
+    "assumptions": {"type": "array", "items": {"type": "string"}},
+    "open_questions": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "For needs_info, the questions for the reporter, most important first"
+    }
+  }
+}

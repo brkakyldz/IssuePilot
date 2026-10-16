@@ -1,0 +1,148 @@
+# IssuePilot: investigate a new issue with Claude Code, verify and publish the result.
+#
+# Job 1 (investigate) runs Claude with a read-only GitHub token and no write tools;
+# it returns JSON. Job 2 (publish) has no Claude in it: it checks the cited evidence
+# against a fresh checkout, renders the comment and is the only job that can write
+# to the issue. See ADR 0001 in brkakyldz/IssuePilot.
+#
+# Until packaging (M4) this file and .github/issuepilot/ are copied into the target
+# repository by scripts/sync_sandbox.py.
+
+name: IssuePilot
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to investigate
+        required: true
+
+permissions: {}
+
+env:
+  ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+
+concurrency:
+  group: issuepilot-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+jobs:
+  investigate:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.user.type != 'Bot' &&
+       !contains(github.event.issue.labels.*.name, 'issuepilot:skip'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      analysis: ${{ steps.claude.outputs.structured_output }}
+      metrics: ${{ steps.metrics.outputs.json }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build prompt and schema
+        id: prep
+        env:
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          LANGUAGE: Turkish
+        run: |
+          delim="EOF_$(openssl rand -hex 8)"
+          {
+            echo "prompt<<$delim"
+            envsubst '$ISSUE_NUMBER $REPO $SHA $LANGUAGE' < .github/issuepilot/prompt.md
+            echo "$delim"
+            echo "schema=$(jq -c . .github/issuepilot/analysis.schema.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      # A token pasted with a trailing newline or space is rejected as "Not logged in"
+      # (401). Strip whitespace, and fail with a clear message when the secret is missing.
+      - name: Prepare the Claude token
+        id: token
+        env:
+          RAW_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          token="$(printf '%s' "$RAW_TOKEN" | tr -d '[:space:]')"
+          if [ -z "$token" ]; then
+            echo "::error::The CLAUDE_CODE_OAUTH_TOKEN secret is missing or empty. Run 'claude setup-token' and add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "value=$token" >> "$GITHUB_OUTPUT"
+
+      - name: Investigate with Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Harmless tripwire: if this value ever reaches the comment, the publish
+          # step refuses to post (src/issuepilot/leaks.py).
+          ISSUEPILOT_CANARY: issuepilot-canary-${{ github.run_id }}
+        with:
+          claude_code_oauth_token: ${{ steps.token.outputs.value }}
+          github_token: ${{ github.token }}
+          prompt: ${{ steps.prep.outputs.prompt }}
+          settings: '{"permissions":{"blockReadsOutsideWorkingDirectories":true}}'
+          claude_args: |
+            --model sonnet
+            --max-turns 30
+            --json-schema '${{ steps.prep.outputs.schema }}'
+            --allowedTools "Bash(git ls-files:*),Bash(git grep:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git diff:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh search issues:*),Bash(gh search prs:*)"
+            --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Read(//proc/**),Read(//sys/**),Read(~/.*),Read(~/.*/**)"
+
+      - name: Record run metrics
+        id: metrics
+        if: always() && steps.claude.outputs.execution_file != ''
+        env:
+          EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          echo "json=$(jq -c '[.[] | select(.type == "result")] | last
+            | {subtype, is_error, api_error_status, num_turns, duration_ms, total_cost_usd,
+               result: ((.result // "") | tostring | .[0:300])}' "$EXEC_FILE")" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the transcript
+        if: always() && steps.claude.outputs.execution_file != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: issuepilot-transcript-${{ env.ISSUE_NUMBER }}-${{ github.run_attempt }}
+          path: ${{ steps.claude.outputs.execution_file }}
+          retention-days: 7
+
+  publish:
+    needs: investigate
+    if: always() && needs.investigate.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      # A fresh checkout at the same commit: evidence is checked against files the
+      # investigate job could not have touched.
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Verify, render and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PYTHONPATH: .github/issuepilot
+          ANALYSIS: ${{ needs.investigate.outputs.analysis }}
+          METRICS: ${{ needs.investigate.outputs.metrics }}
+          INVESTIGATE_RESULT: ${{ needs.investigate.result }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 -m issuepilot

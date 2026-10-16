@@ -1,0 +1,81 @@
+{
+  "kind": "bug_analysis",
+  "confidence": "high",
+  "headline": "e4a5f61 commit'i tutarları Decimal'den float'a çevirdi; to_cents artık round() kullanıyor ve 4,125 gibi yarım kuruşları aşağı yuvarlıyor.",
+  "fix_summary": "to_cents'i Decimal ve ROUND_HALF_UP ile geri yaz; issue'daki fatura için regresyon testi ekle.",
+  "uncertainty": "Kodu çalıştıramadım; float sonucunu kodu okuyarak çıkardım.",
+  "explanation": "1) #1 numaralı sorun için 74c9f44'te `to_cents` Decimal ile ROUND_HALF_UP kullanacak şekilde düzeltildi (2.675 -> 2.68). 2) e4a5f61 (\"Simplify money helpers\") bunu geri aldı: `to_money` artık `float(value)`, `to_cents` ise `round(amount, 2)` döndürüyor. Bu commit yarım-yukarı yuvarlamayı ve ilgili Decimal testini de kaldırdı. 3) `round()` float'larda iki sorunlu: (a) ikilik gösterim nedeniyle tam yarım değerler (ör. 4.125) yukarı değil, temsil edilen en yakın değere göre yuvarlanır; (b) tam yarım olarak temsil edilebilen değerlerde banker's rounding (yarım-çifte) uygular. Örnek faturada line_total = 3.75; `total()` içinde 3.75 * (1 - 0.0) * (1 + 0.1) = 4.125 civarında bir float çıkar (1.1 ikilikte tam değil, sonuç 4.125'in altında ya da tam 4.125 olabilir) ve `round(..., 2)` 4.12 verir. Bu yüzden sorun yalnızca tam yarım kuruşa denk gelen faturalarda ortaya çıkıyor ve \"çoğu doğru\" görünüyor. Bu çıkarım kodun okunmasına dayanıyor; kodu çalıştırıp doğrulayamadım. Zaman çizelgesi (\"birkaç hafta öncesine kadar şikâyet yoktu\") regresyon commit'iyle uyumlu.",
+  "evidence": [
+    {
+      "path": "minibill/money.py",
+      "start_line": 9,
+      "end_line": 11,
+      "quote": "def to_cents(amount: float) -> float:\n    \"\"\"Round to 2 decimals.\"\"\"\n    return round(amount, 2)",
+      "why": "Yarım-yukarı yuvarlama kaybolmuş; float üzerinde yerleşik round() kullanılıyor."
+    },
+    {
+      "path": "minibill/money.py",
+      "start_line": 4,
+      "end_line": 6,
+      "quote": "def to_money(value) -> float:\n    \"\"\"Parse a user-supplied amount (\"12.50\", 12) into a float.\"\"\"\n    return float(value)",
+      "why": "\"1.25\" ve \"0.10\" gibi girdiler ikilik float'a çevriliyor, ondalık hassasiyet kaybolıyor."
+    },
+    {
+      "path": "minibill/pricing.py",
+      "start_line": 24,
+      "end_line": 27,
+      "quote": "\"\"\"Subtotal, minus discount, plus VAT, rounded once at the end.\"\"\"\n    discounted = subtotal(invoice) * (1 - invoice.discount_rate)\n    return to_cents(discounted * (1 + invoice.tax_rate))",
+      "why": "Toplam, float çarpımıyla 4.125 civarı bir değer üretip to_cents'e veriyor; yarım kuruş sınırı burada bozuluyor."
+    }
+  ],
+  "related": [
+    {
+      "kind": "commit",
+      "ref": "e4a5f61",
+      "why": "Decimal'i kaldırıp float + round() getiren regresyon commit'i; Decimal-specific rounding testini de sildi."
+    },
+    {
+      "kind": "commit",
+      "ref": "74c9f44",
+      "why": "ROUND_HALF_UP düzeltmesi (fixes #1); doğru davranışın tanımı."
+    },
+    {
+      "kind": "issue",
+      "ref": "#1",
+      "why": "Yarım-yukarı yuvarlama gerekliliğinin kaynağı; aynı sorun geri geldi."
+    }
+  ],
+  "suggested_fixes": [
+    {
+      "title": "Decimal ve ROUND_HALF_UP'ı geri getir",
+      "description": "`to_money` Decimal(str(value)) döndürsün, `to_cents` amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) kullansın. Modeller ve pricing zaten bu tiplerle çalışacak şekilde; CLI çıktısında Decimal gösterimi sızıntısı için formatlamayı (f'{x:.2f}') CLI katmanında çöz. e4a5f61'in gerekçesi olan JSON/CLI sorunu çıktı katmanında çözülmeli, hesaplama katmanında değil.",
+      "files": [
+        "minibill/money.py",
+        "minibill/models.py",
+        "minibill/pricing.py",
+        "minibill/__main__.py"
+      ]
+    },
+    {
+      "title": "Regresyon testi ekle",
+      "description": "Issue'daki fatura (1.25 x 3, tax 0.10 -> 4.13) ve 2.675 -> 2.68 için testler ekle; silinen Decimal yuvarlama testini geri getir.",
+      "files": [
+        "tests/test_pricing.py"
+      ]
+    }
+  ],
+  "verification_steps": [
+    "python -c \"from minibill import *; print(total(Invoice(items=[LineItem('Silgi','1.25',3)], tax_rate='0.10')))\" ile mevcut çıktının 4.12 olduğunu doğrula.",
+    "python -c \"print(repr(3.75*(1+0.1)), round(2.675,2))\" ile float davranışını incele.",
+    "git checkout 74c9f44 -- minibill/money.py ile eski davranışta 4.13 çıktığını doğrula (modellerle uyumlu olduğundan emin ol).",
+    "Düzeltmeden sonra yeni regresyon testlerini ve mevcut testleri çalıştır."
+  ],
+  "assumptions": [
+    "3.75 * (1 + 0.1) çarpımının float'ta 4.125'in altında kalan bir değer vermesi bekleniyor; kodu çalıştıramadığım için kesin değeri görmedim.",
+    "CLI (`__main__.py`) çıktısını okumadım; toplam çıktısının doğrudan total() sonucunu biçimlendirdiğini varsayıyorum."
+  ],
+  "open_questions": [
+    "Issue yorumlarındaki iki 'analiz üretilemedi' mesajı IssuePilot iş akışının önceki başarısız çalışmalarıdır (kimlik doğrulama sorunu); sorunun kendisiyle ilgili değildir.",
+    "Muhasebe programı hangi yuvarlamayı kullanıyor (yarım-yukarı mı)? README #1 ile uyumlu olduğu varsayıldı."
+  ]
+}

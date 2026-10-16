@@ -1,0 +1,45 @@
+{
+  "kind": "needs_info",
+  "confidence": "low",
+  "headline": "Hangi komutun çalıştırıldığı ve hata mesajı yok; neden bulunamıyor.",
+  "fix_summary": "",
+  "uncertainty": "Koddan çıkarılan olasılıkların hiçbiri raporla eşleştirilemedi.",
+  "explanation": "Kesin bir neden belirlenemedi. Rapor \"bazen\" oluyor diyor, yani hata girdiye bağlı olabilir. CLI girdisini minibill/__main__.py içindeki load işliyor ve doğrulama yapmıyor. Dosya yoksa, JSON bozuksa, items anahtarı yoksa ya da bir kalemde LineItem alanları uyuşmuyorsa ham bir istisna (traceback) atılır. Bunlar yalnızca koddan çıkarılmış adaylardır. Raporla eşleştiklerine dair kanıt yok ve hiçbirini çalıştırıp doğrulayamadım.",
+  "evidence": [
+    {
+      "path": "minibill/__main__.py",
+      "start_line": 9,
+      "end_line": 12,
+      "quote": "def load(path: str) -> Invoice:\n    with open(path, encoding=\"utf-8\") as fh:\n        data = json.load(fh)",
+      "why": "Girdi dosyası açılıp JSON olarak okunuyor, hata yakalama yok. Dosya veya JSON hatası doğrudan traceback olarak görünür."
+    }
+  ],
+  "related": [
+    {
+      "kind": "issue",
+      "ref": "#2",
+      "why": "Aynı depoda açık olan, toplamda 1 kuruş eksik çıkmasıyla ilgili issue. Hata mesajı gelince bağlantısı olup olmadığı kontrol edilebilir."
+    },
+    {
+      "kind": "commit",
+      "ref": "034ae52",
+      "why": "CLI'a --currency bayrağını ekleyen son değişiklik. Hatalar bu değişiklikten sonra başladıysa ilk bakılacak yer burası."
+    }
+  ],
+  "suggested_fixes": [],
+  "verification_steps": [
+    "Reporter tam komutu ve tam hata çıktısını (traceback dahil) paylaştıktan sonra aynı girdiyle yeniden üretmeyi deneyin.",
+    "Hata mesajına göre load içindeki dosya açma, JSON okuma ve LineItem(**item) adımlarından hangisinin başarısız olduğunu belirleyin."
+  ],
+  "assumptions": [
+    "Issue gövdesinin tamamı yukarıdaki tek cümleden ibaret; yorum yok.",
+    "'CLI' ile python -m minibill kastediliyor."
+  ],
+  "open_questions": [
+    "Hangi komut çalıştırıldı (örn. python -m minibill fatura.json)? --currency kullanıldı mı?",
+    "Tam hata mesajı veya traceback nedir?",
+    "Hata her seferinde mi, yalnızca belirli fatura dosyalarında mı oluşuyor? Örnek bir JSON dosyası paylaşılabilir mi?",
+    "Python sürümü ve işletim sistemi nedir?",
+    "Hata commit 034ae52 (--currency bayrağı) öncesinde de oluyor muydu?"
+  ]
+}
