@@ -38,6 +38,8 @@ KINDS = {"bug_analysis", "needs_info", "not_a_bug"}
 def load_cases(suite: Path, ids: list[str] | None = None) -> list[dict]:
     cases = []
     for path in sorted(suite.glob("*.json")):
+        if path.name == "verify.json":  # the held-out suite's run config, not a case
+            continue
         case = json.loads(path.read_text(encoding="utf-8"))
         problems = validate_case(case)
         if problems:

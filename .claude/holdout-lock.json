@@ -1,0 +1,4 @@
+{
+  "paths": ["tests/acceptance/holdout/"],
+  "reason": "held-out acceptance scenarios are written by the other runtime (scenario-author) or the owner, never by the implementing agent"
+}

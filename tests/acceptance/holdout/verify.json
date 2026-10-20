@@ -1,0 +1,10 @@
+{
+  "command": "python evals/backtest.py run --suite tests/acceptance/holdout --judge opus --out .backtest-holdout --junit .backtest-holdout/junit.xml",
+  "format": "junit",
+  "report": ".backtest-holdout/junit.xml",
+  "expected": ["H01", "H02", "H03", "H04", "H05", "H06", "H07", "H08", "H09", "H10"],
+  "runs": 1,
+  "perScenario": 1,
+  "overall": 0.8,
+  "timeoutMs": 3600000
+}

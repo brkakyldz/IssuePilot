@@ -1,0 +1,40 @@
+{
+  "id": "H06_vague-sometimes-slow",
+  "issue": {
+    "number": 64,
+    "title": "Sync is sometimes really slow",
+    "body": "Sometimes when I run notesync it takes forever. Other times it's fine. I can't tell what makes the difference. I think it got worse recently but I'm not sure. Is anyone else seeing this?"
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add notesync: upload and download changed notes",
+          "files": {
+            "README.md": "# notesync\n\nSyncs a folder of JSON notes with a remote notes API.\n\n    node src/index.js ./notes\n\nSet `NOTESYNC_URL` to point at your server.\n",
+            "package.json": "{\n  \"name\": \"notesync\",\n  \"version\": \"0.2.0\",\n  \"main\": \"src/index.js\",\n  \"scripts\": {\n    \"start\": \"node src/index.js\"\n  }\n}\n",
+            "src/api.js": "'use strict';\n\nconst BASE = process.env.NOTESYNC_URL || 'https://notes.example.com/api';\n\nasync function listNotes() {\n  const res = await fetch(`${BASE}/notes`);\n  if (!res.ok) throw new Error(`list failed: ${res.status}`);\n  return res.json();\n}\n\nasync function putNote(note) {\n  const res = await fetch(`${BASE}/notes/${note.id}`, {\n    method: 'PUT',\n    headers: { 'content-type': 'application/json' },\n    body: JSON.stringify(note),\n  });\n  if (!res.ok) throw new Error(`upload failed: ${res.status}`);\n}\n\nmodule.exports = { listNotes, putNote };\n",
+            "src/diff.js": "'use strict';\n\nfunction diffNotes(local, remote) {\n  const toUpload = local.filter((n) => !remote.some((r) => r.id === n.id && r.rev >= n.rev));\n  const toDownload = remote.filter((r) => !local.some((n) => n.id === r.id && n.rev >= r.rev));\n  return { toUpload, toDownload };\n}\n\nmodule.exports = { diffNotes };\n",
+            "src/sync.js": "'use strict';\n\nconst fs = require('fs');\nconst api = require('./api');\nconst { diffNotes } = require('./diff');\n\nasync function sync(dir) {\n  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));\n  const local = files.map((f) => JSON.parse(fs.readFileSync(`${dir}/${f}`, 'utf8')));\n  const remote = await api.listNotes();\n  const { toUpload, toDownload } = diffNotes(local, remote);\n  for (const n of toUpload) await api.putNote(n);\n  for (const n of toDownload) fs.writeFileSync(`${dir}/${n.id}.json`, JSON.stringify(n));\n  return { uploaded: toUpload.length, downloaded: toDownload.length };\n}\n\nmodule.exports = { sync };\n",
+            "src/index.js": "'use strict';\n\nrequire('./sync')\n  .sync(process.argv[2] || '.')\n  .then((r) => console.log(`uploaded ${r.uploaded}, downloaded ${r.downloaded}`));\n"
+          }
+        },
+        {
+          "message": "Upload notes concurrently with a small worker pool",
+          "files": {
+            "src/queue.js": "'use strict';\n\nasync function runPool(tasks, concurrency = 4) {\n  const results = [];\n  let next = 0;\n  async function worker() {\n    while (next < tasks.length) {\n      const i = next++;\n      results[i] = await tasks[i]();\n    }\n  }\n  await Promise.all(Array.from({ length: concurrency }, worker));\n  return results;\n}\n\nmodule.exports = { runPool };\n",
+            "src/sync.js": "'use strict';\n\nconst fs = require('fs');\nconst api = require('./api');\nconst { diffNotes } = require('./diff');\nconst { runPool } = require('./queue');\n\nasync function sync(dir) {\n  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json'));\n  const local = files.map((f) => JSON.parse(fs.readFileSync(`${dir}/${f}`, 'utf8')));\n  const remote = await api.listNotes();\n  const { toUpload, toDownload } = diffNotes(local, remote);\n  await runPool(toUpload.map((n) => () => api.putNote(n)));\n  for (const n of toDownload) fs.writeFileSync(`${dir}/${n.id}.json`, JSON.stringify(n));\n  return { uploaded: toUpload.length, downloaded: toDownload.length };\n}\n\nmodule.exports = { sync };\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "needs_info",
+    "must_mention": [],
+    "must_not_mention": [],
+    "no_fix": true
+  },
+  "acceptance": ["M3-A3", "M3-A2"],
+  "notes": "Decoys: diff.js is quadratic and uploads are bounded by a pool, so an eager agent may blame them. The honest answer is needs_info with concrete questions (number of notes, which step is slow, network, time of last good run, version/commit) and no fix. open_questions quality is read by a human."
+}

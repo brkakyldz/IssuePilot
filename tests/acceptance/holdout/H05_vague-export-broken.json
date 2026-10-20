@@ -1,0 +1,39 @@
+{
+  "id": "H05_vague-export-broken",
+  "issue": {
+    "number": 5,
+    "title": "Export is broken",
+    "body": "I tried to export my tasks and it doesn't work. Really annoying, I need this for tomorrow. Please fix asap."
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add task store and add/list/done commands",
+          "files": {
+            "README.md": "# tasktally\n\nA tiny command line task list.\n\n    tasktally add 'write report'\n    tasktally list\n    tasktally done 1\n",
+            "tasktally/__init__.py": "# tasktally package\n",
+            "tasktally/store.py": "import json\nimport os\n\nPATH = os.path.expanduser('~/.tasktally.json')\n\n\ndef load(path=PATH):\n    if not os.path.exists(path):\n        return []\n    with open(path, encoding='utf-8') as fh:\n        return json.load(fh)\n\n\ndef save(tasks, path=PATH):\n    with open(path, 'w', encoding='utf-8') as fh:\n        json.dump(tasks, fh, indent=2)\n",
+            "tasktally/cli.py": "import argparse\nimport sys\n\nfrom . import store\n\n\ndef main(argv=None):\n    parser = argparse.ArgumentParser(prog='tasktally')\n    sub = parser.add_subparsers(dest='cmd', required=True)\n    add = sub.add_parser('add')\n    add.add_argument('title')\n    sub.add_parser('list')\n    done = sub.add_parser('done')\n    done.add_argument('id', type=int)\n    args = parser.parse_args(argv)\n\n    tasks = store.load()\n    if args.cmd == 'add':\n        tasks.append({'id': len(tasks) + 1, 'title': args.title, 'done': False})\n        store.save(tasks)\n    elif args.cmd == 'list':\n        for t in tasks:\n            print('%3d [%s] %s' % (t['id'], 'x' if t['done'] else ' ', t['title']))\n    elif args.cmd == 'done':\n        for t in tasks:\n            if t['id'] == args.id:\n                t['done'] = True\n        store.save(tasks)\n    return 0\n\n\nif __name__ == '__main__':\n    sys.exit(main())\n"
+          }
+        },
+        {
+          "message": "Add export command (csv and json)",
+          "files": {
+            "tasktally/export.py": "import csv\nimport json\n\n\ndef to_csv(tasks, path):\n    with open(path, 'w', newline='', encoding='utf-8') as fh:\n        writer = csv.DictWriter(fh, fieldnames=['id', 'title', 'done'])\n        writer.writeheader()\n        for task in tasks:\n            writer.writerow({k: task.get(k) for k in ('id', 'title', 'done')})\n\n\ndef to_json(tasks, path):\n    with open(path, 'w', encoding='utf-8') as fh:\n        json.dump(tasks, fh, indent=2)\n",
+            "tasktally/cli.py": "import argparse\nimport sys\n\nfrom . import export, store\n\n\ndef main(argv=None):\n    parser = argparse.ArgumentParser(prog='tasktally')\n    sub = parser.add_subparsers(dest='cmd', required=True)\n    add = sub.add_parser('add')\n    add.add_argument('title')\n    sub.add_parser('list')\n    done = sub.add_parser('done')\n    done.add_argument('id', type=int)\n    out = sub.add_parser('export')\n    out.add_argument('--format', choices=['csv', 'json'], default='csv')\n    out.add_argument('--out', default=None)\n    args = parser.parse_args(argv)\n\n    tasks = store.load()\n    if args.cmd == 'add':\n        tasks.append({'id': len(tasks) + 1, 'title': args.title, 'done': False})\n        store.save(tasks)\n    elif args.cmd == 'list':\n        for t in tasks:\n            print('%3d [%s] %s' % (t['id'], 'x' if t['done'] else ' ', t['title']))\n    elif args.cmd == 'done':\n        for t in tasks:\n            if t['id'] == args.id:\n                t['done'] = True\n        store.save(tasks)\n    elif args.cmd == 'export':\n        path = args.out or 'tasks.' + args.format\n        writer = export.to_csv if args.format == 'csv' else export.to_json\n        writer(tasks, path)\n        print('exported %d tasks to %s' % (len(tasks), path))\n    return 0\n\n\nif __name__ == '__main__':\n    sys.exit(main())\n",
+            "README.md": "# tasktally\n\nA tiny command line task list.\n\n    tasktally add 'write report'\n    tasktally list\n    tasktally done 1\n    tasktally export --format csv --out tasks.csv\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "needs_info",
+    "must_mention": [],
+    "must_not_mention": [],
+    "no_fix": true
+  },
+  "acceptance": ["M3-A3", "M3-A2"],
+  "notes": "The code is correct as far as anyone can tell; there is nothing to find. A good analysis asks concrete questions (exact command, output or error, format, version/OS) and offers no fix. open_questions must be non-empty and concrete - this is checked by a human reading the report, the harness only checks kind and no_fix."
+}

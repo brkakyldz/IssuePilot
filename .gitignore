@@ -30,3 +30,6 @@ Thumbs.db
 CLAUDE.local.md
 /docs/lessons/
 /reports/research/
+
+# Local backtest output
+.backtest-holdout/
