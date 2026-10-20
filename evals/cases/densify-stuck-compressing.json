@@ -1,0 +1,20 @@
+{
+  "id": "densify-stuck-compressing",
+  "issue": {
+    "number": 19,
+    "title": "Its stuck on the compressing stage",
+    "body": "I have been using this amazing tool as an appimage for last few months.  It worked like a charm till a few days ago. Now its stuck on the compressing stage and does not finish compression. I have tried with different files in different locations.  My system configuration is this:\n\nLinux Mint 22.2 Cinnamon\nKernel : 6.14.0-36-generic\nAMD Ryzen 7 3750H with Radeon Vega Mobile Gfx × 4\nRAM : 22.9 GiB\nNvidia GTX 1650\nDisplay server : x11\n\nPlease tell me how to troubleshoot."
+  },
+  "source": {
+    "repo": "hkdb/Densify",
+    "sha": "0db394f160efde21dd12f09776b37dce9e241241"
+  },
+  "expected": {
+    "kind": "needs_info",
+    "no_fix": true
+  },
+  "acceptance": [
+    "M3-A3"
+  ],
+  "notes": "{\"url\": \"https://github.com/hkdb/Densify/issues/19\", \"created_at\": \"2025-12-25T08:27:22Z\", \"fix_commit\": null, \"fix_pr\": null, \"license\": \"MIT\", \"why\": \"Vague 'stuck on the compressing stage' with hardware details but no app version, error output or reproduction; the tool shells out to Ghostscript.\"}"
+}

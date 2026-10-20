@@ -1,0 +1,20 @@
+{
+  "id": "marklas-adf-date-milliseconds",
+  "issue": {
+    "number": 2,
+    "title": "Incorrect time conversion when using <time> block",
+    "body": "# Problem\n\nWhen the library generates the block\n\n```\n<time adf=\"date\" datetime=\"1782662090\">2026-06-28</time>\n```\n\nthe date displayed in the rendered markdown is incorrect. It displays 1970-01-21\n\nThe reason for this seems to be in the line of code: `marklas/md/renderer/block.py:1040`.\n\n```python\ndef _render_date(node: ast.Date) -> str:                                                 \n    ts = int(node.timestamp) / 1000\n```\n\nThe issue is that we shouldn't divide the value by 1000. Instead, we should simply take the int value.\n\n## How to Test\n\n```python\nimport time\n\ntimestamp_value = time.time()\ntimestamp_value\n1782662449.0046248\n\nts = int(timestamp_value) / 1000\nts\n1782662.449\n\n# incorrect\ndt = datetime.datetime.fromtimestamp(ts, tz=timezone.utc)\ndatetime.datetime(1970, 1, 21, 15, 11, 2, 449000, tzinfo=datetime.timezone.utc)\n\n# correct\nts = int(timestamp_value)\ndt = datetime.datetime.fromtimestamp(ts, tz=timezone.utc)\ndatetime.datetime(2026, 6, 28, 16, 0, 49, tzinfo=datetime.timezone.utc)\n```\n"
+  },
+  "source": {
+    "repo": "byExist/marklas",
+    "sha": "20d4f89c75d206d6e9903d1bd7fdf651104eba0a"
+  },
+  "expected": {
+    "kind": "not_a_bug",
+    "cause": "Intended behaviour: _render_date in src/marklas/md/renderer/block.py divides by 1000 because ADF date timestamps are in milliseconds; the reporter fed a 10-digit seconds value."
+  },
+  "acceptance": [
+    "M3-A6"
+  ],
+  "notes": "{\"url\": \"https://github.com/byExist/marklas/issues/2\", \"created_at\": \"2026-06-28T16:09:12Z\", \"fix_commit\": null, \"fix_pr\": null, \"license\": \"MIT\", \"why\": \"The reporter names the exact line and proposes a wrong fix; tests whether the model checks the data format instead of accepting the suggestion.\"}"
+}
