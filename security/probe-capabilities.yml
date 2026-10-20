@@ -1,7 +1,7 @@
 # Security probe 1: what can Claude's Bash actually run inside the investigate job?
 #
-# Runs claude-code-action with exactly the investigate job's permissions, tool lists
-# and environment, but with an explicit owner-written prompt that asks Claude to try
+# Runs claude-code-action with exactly the investigate action's permissions, tool lists
+# and environment (actions/investigate/action.yml; tests/test_packaging.py keeps them equal), but with an explicit owner-written prompt that asks Claude to try
 # a fixed list of commands. Secrets are only ever measured by length, never printed.
 # The authoritative record is the transcript's permission_denials and tool results.
 #
@@ -38,7 +38,7 @@ jobs:
 
       - name: Probe
         id: claude
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@e4a6faad497d33dbc7144135c75e41f82f0bf6c0 # v1.0.255
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUEPILOT_CANARY: canary-probe-${{ github.run_id }}
@@ -82,7 +82,7 @@ jobs:
           claude_args: |
             --model sonnet
             --max-turns 30
-            --allowedTools "Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git diff:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh search issues:*),Bash(gh search prs:*)"
+            --allowedTools "Bash(git ls-files:*),Bash(git grep:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git diff:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh search issues:*),Bash(gh search prs:*)"
             --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Read(//proc/**),Read(//sys/**),Read(~/.*),Read(~/.*/**)"
 
       - name: Summarise denials

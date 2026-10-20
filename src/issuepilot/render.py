@@ -11,22 +11,11 @@ from __future__ import annotations
 import re
 
 from issuepilot.failure import Failure
+from issuepilot.i18n import text_for
 from issuepilot.verify import EvidenceCheck, Verified
 
 MARKER = "<!-- issuepilot -->"
 
-KIND = {
-    "bug_analysis": "Hata analizi",
-    "needs_info": "Daha fazla bilgi gerekiyor",
-    "not_a_bug": "Beklenen davranış gibi görünüyor",
-}
-CONFIDENCE = {"high": "yüksek", "medium": "orta", "low": "düşük"}
-UNVERIFIED_REASON = {
-    "outside_repository": "yol repo dışını gösteriyor",
-    "file_not_found": "dosya bulunamadı",
-    "empty_quote": "alıntı boş",
-    "quote_not_found": "alıntı dosyada bulunamadı",
-}
 RELATED_KIND = {"issue": "issue", "pull_request": "PR", "commit": "commit"}
 
 HEADLINE_MAX = 300
@@ -76,33 +65,33 @@ def _section(title: str, lines: list[str]) -> list[str]:
     return [f"#### {title}", "", *lines, ""] if lines else []
 
 
-def _evidence_lines(checks: list[EvidenceCheck], repo: str, sha: str) -> list[str]:
+def _evidence_lines(checks: list[EvidenceCheck], repo: str, sha: str, t: dict) -> list[str]:
     out = []
     for check in checks[:MAX_EVIDENCE]:
         item = check.item
         out.append(f"- [`{line_label(item)}`]({permalink(repo, sha, item)}): {safe(item['why'])}")
         if check.status == "corrected":
             start, end = check.original_lines
-            out.append(f"  <sub>Satır numarası kontrolde düzeltildi (analizde {start}-{end} yazıyordu).</sub>")
+            out.append(f"  <sub>{t['line_corrected'].format(start=start, end=end)}</sub>")
         mark = fence(item["quote"])
         out += [f"  {mark}", *(f"  {line}" for line in item["quote"].splitlines()), f"  {mark}"]
     return out
 
 
-def _unverified_lines(result: Verified) -> list[str]:
+def _unverified_lines(result: Verified, t: dict) -> list[str]:
     out = [
         f"- `{safe(c.item['path'])}`: {safe(c.item['why'])} "
-        f"<sub>({UNVERIFIED_REASON.get(c.reason, c.reason)})</sub>"
+        f"<sub>({t['unverified_reason'].get(c.reason, c.reason)})</sub>"
         for c in result.unverified
     ]
-    out += [f"- {safe(r['ref'])}: GitHub'da bulunamadı" for r in result.dropped_related]
+    out += [f"- {safe(r['ref'])}: {t['ref_not_found']}" for r in result.dropped_related]
     if out and result.confidence_note:
         out.append("")
-        out.append("Bu yüzden güven seviyesi düşürüldü.")
+        out.append(t["confidence_lowered_note"])
     return out
 
 
-def _details(result: Verified, repo: str, sha: str) -> list[str]:
+def _details(result: Verified, repo: str, sha: str, t: dict) -> list[str]:
     a = result.analysis
     related = [f"- {safe(r['ref'])} ({RELATED_KIND[r['kind']]}): {safe(r['why'])}" for r in a["related"]]
     fixes = []
@@ -111,61 +100,66 @@ def _details(result: Verified, repo: str, sha: str) -> list[str]:
         fixes.append(f"{n}. **{safe(fix['title'])}**: {safe(fix['description'])}" + (f" ({files})" if files else ""))
     questions = [] if a["kind"] == "needs_info" else a["open_questions"]
     body = [
-        *_section("Açıklama", [safe(a["explanation"])] if a["explanation"].strip() else []),
-        *_section("Kanıtlar", _evidence_lines(result.evidence, repo, sha)),
-        *_section("Doğrulanamayanlar", _unverified_lines(result)),
-        *_section("İlgili kayıtlar", related),
-        *_section("Çözüm önerileri", fixes),
-        *_section("Doğrulama adımları", [f"- {safe(s)}" for s in a["verification_steps"]]),
-        *_section("Varsayımlar", [f"- {safe(s)}" for s in a["assumptions"]]),
-        *_section("Açık sorular", [f"- {safe(s)}" for s in questions]),
+        *_section(t["explanation"], [safe(a["explanation"])] if a["explanation"].strip() else []),
+        *_section(t["evidence"], _evidence_lines(result.evidence, repo, sha, t)),
+        *_section(t["unverified"], _unverified_lines(result, t)),
+        *_section(t["related"], related),
+        *_section(t["suggested_fixes"], fixes),
+        *_section(t["verification_steps"], [f"- {safe(s)}" for s in a["verification_steps"]]),
+        *_section(t["assumptions"], [f"- {safe(s)}" for s in a["assumptions"]]),
+        *_section(t["open_questions"], [f"- {safe(s)}" for s in questions]),
     ]
     if not body:
         return []
-    return ["<details>", "<summary>Kanıtlar, doğrulama adımları ve ayrıntılar</summary>", "", *body, "</details>", ""]
+    return ["<details>", f"<summary>{t['details_summary']}</summary>", "", *body, "</details>", ""]
 
 
-def footer(sha: str, run_url: str, metrics: dict | None) -> str:
+def footer(sha: str, run_url: str, metrics: dict | None, t: dict) -> str:
     parts = [f"commit `{sha[:7]}`"]
     metrics = metrics or {}
     if metrics.get("num_turns") is not None:
-        parts.append(f"{metrics['num_turns']} adım")
+        parts.append(t["turns"].format(n=metrics["num_turns"]))
     if metrics.get("duration_ms") is not None:
-        parts.append(f"{metrics['duration_ms'] / 1000:.0f} sn")
-    parts.append(f"[çalışma kaydı]({run_url})")
+        parts.append(t["seconds"].format(n=f"{metrics['duration_ms'] / 1000:.0f}"))
+    parts.append(f"[{t['run_log']}]({run_url})")
     return "<sub>IssuePilot · " + " · ".join(parts) + "</sub>"
 
 
-def render_analysis(result: Verified, repo: str, sha: str, run_url: str, metrics: dict | None) -> str:
+def render_analysis(
+    result: Verified, repo: str, sha: str, run_url: str, metrics: dict | None, language: str = "English"
+) -> str:
+    t = text_for(language)
     a = result.analysis
-    confidence = CONFIDENCE.get(a["confidence"], a["confidence"])
+    confidence = t["confidence"].get(a["confidence"], a["confidence"])
     if result.confidence_note:
-        confidence += " (kontrolden sonra düşürüldü)"
-    out = [MARKER, f"### IssuePilot · {KIND.get(a['kind'], a['kind'])} · güven: {confidence}", ""]
+        confidence += t["confidence_lowered"]
+    kind = t["kind"].get(a["kind"], a["kind"])
+    out = [MARKER, f"### IssuePilot · {kind} · {t['confidence_label']}: {confidence}", ""]
 
     if a["kind"] == "needs_info":
-        out += [f"**Eksik olan:** {safe(short(a['headline'], HEADLINE_MAX))}", ""]
+        out += [f"{t['missing']} {safe(short(a['headline'], HEADLINE_MAX))}", ""]
         questions = a["open_questions"][:MAX_QUESTIONS]
         if questions:
-            out += ["**Sorular:**", *(f"- {safe(short(q, HEADLINE_MAX))}" for q in questions), ""]
+            out += [t["questions"], *(f"- {safe(short(q, HEADLINE_MAX))}" for q in questions), ""]
     else:
-        out += [f"**Neden:** {safe(short(a['headline'], HEADLINE_MAX))}", ""]
+        out += [f"{t['cause']} {safe(short(a['headline'], HEADLINE_MAX))}", ""]
         if result.evidence:
             # A bare permalink on its own line renders as a code preview on GitHub.
-            out += ["**Nerede:**", permalink(repo, sha, result.evidence[0].item), ""]
+            out += [t["where"], permalink(repo, sha, result.evidence[0].item), ""]
         else:
-            out += ["**Nerede:** Doğrulanmış bir konum yok.", ""]
+            out += [t["where_none"], ""]
         if a["fix_summary"].strip():
-            out += [f"**Öneri:** {safe(short(a['fix_summary'], FIX_MAX))}", ""]
+            out += [f"{t['fix']} {safe(short(a['fix_summary'], FIX_MAX))}", ""]
 
     if a["uncertainty"].strip():
-        out += [f"**Emin olmadığım:** {safe(short(a['uncertainty'], UNCERTAINTY_MAX))}", ""]
-    out += _details(result, repo, sha)
-    out.append(footer(sha, run_url, metrics))
+        out += [f"{t['unsure']} {safe(short(a['uncertainty'], UNCERTAINTY_MAX))}", ""]
+    out += _details(result, repo, sha, t)
+    out.append(footer(sha, run_url, metrics, t))
     return "\n".join(out) + "\n"
 
 
-def render_failure(failure: Failure, sha: str, run_url: str, metrics: dict | None) -> str:
-    return "\n".join(
-        [MARKER, "### IssuePilot · Analiz yapılamadı", "", f"**Sebep:** {failure.message}", "", footer(sha, run_url, metrics)]
-    ) + "\n"
+def render_failure(failure: Failure, sha: str, run_url: str, metrics: dict | None, language: str = "English") -> str:
+    t = text_for(language)
+    title = f"### IssuePilot · {t['failed_title']}"
+    reason = f"{t['reason']} {t['failures'][failure.code]}"
+    return "\n".join([MARKER, title, "", reason, "", footer(sha, run_url, metrics, t)]) + "\n"

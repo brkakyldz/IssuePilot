@@ -7,6 +7,7 @@ environment variables so that no issue-derived text passes through a shell:
   METRICS             JSON from the run's final result message (may be empty)
   INVESTIGATE_RESULT  the investigate job's result: success, failure, cancelled
   REPO, SHA, ISSUE_NUMBER, RUN_URL
+  LANGUAGE            language of the comment's labels (default English)
   REPO_ROOT           checkout of the repository at SHA (default: .)
   GITHUB_RUN_ID       set by Actions; names the run's canary (see leaks.py)
   GITHUB_STEP_SUMMARY optional; a run summary is appended when set
@@ -19,7 +20,7 @@ import os
 import sys
 from pathlib import Path
 
-from issuepilot.failure import MESSAGES, Failure, classify
+from issuepilot.failure import Failure, classify
 from issuepilot.github import GitHub
 from issuepilot.leaks import canary_for, find_leaks
 from issuepilot.render import render_analysis, render_failure
@@ -63,6 +64,7 @@ def main() -> int:
     env = os.environ
     repo, sha, run_url = env["REPO"], env["SHA"], env["RUN_URL"]
     issue = int(env["ISSUE_NUMBER"])
+    language = env.get("LANGUAGE", "English")
     metrics = parse_json(env.get("METRICS"))
     analysis = parse_json(env.get("ANALYSIS"))
     github = GitHub(repo)
@@ -70,11 +72,11 @@ def main() -> int:
     result, failure_code = None, None
     if analysis is not None:
         result = verify(analysis, Path(env.get("REPO_ROOT", ".")), github.ref_exists)
-        body = render_analysis(result, repo, sha, run_url, metrics)
+        body = render_analysis(result, repo, sha, run_url, metrics, language)
     else:
         failure = classify(env.get("INVESTIGATE_RESULT", "failure"), metrics)
         failure_code = failure.code
-        body = render_failure(failure, sha, run_url, metrics)
+        body = render_failure(failure, sha, run_url, metrics, language)
 
     # Scan the raw analysis too: the comment shortens some fields, and half a token
     # is still a leak.
@@ -83,7 +85,7 @@ def main() -> int:
     if leaks:
         print(f"::error::Analysis not published: it contains {', '.join(leaks)}")
         result, failure_code = None, "secret_detected"
-        body = render_failure(Failure("secret_detected", MESSAGES["secret_detected"]), sha, run_url, None)
+        body = render_failure(Failure("secret_detected"), sha, run_url, None, language)
 
     action = github.upsert_comment(issue, body)
     print(f"IssuePilot comment {action} on #{issue}")

@@ -14,13 +14,16 @@ Product intent: `README.md`. Where we are: `docs/CURRENT_STATE.md`. Why: `docs/d
 
 ## Layout and checks
 
-- `workflow/issuepilot.yml` — the two-job workflow; `prompts/investigate.md` and
-  `schema/analysis.schema.json` — what Claude is asked and what it must return.
+- `.github/workflows/issuepilot.yml` — the reusable two-job workflow; it runs
+  `actions/investigate` (Claude, read-only) and `actions/publish` (no Claude) at its own
+  ref, and `scripts/pin_refs.py` pins those refs on release (ADR 0003). Callers copy
+  `templates/issuepilot.yml`.
+- `prompts/investigate.md` and `schema/analysis.schema.json` — what Claude is asked and
+  what it must return.
 - `src/issuepilot/` — the publish step (verify, leak scan, render, publish), standard
-  library only so the runner needs no install. Tests: `python -m pytest`.
+  library only so the runner needs no install. Tests: `python -m pytest`; CI also runs
+  actionlint.
 - `security/` — the capability probe workflow and the prompt-injection issue.
-- `python scripts/sync_sandbox.py <checkout>` copies all of the above into a target
-  repository until packaging replaces it.
 
 ## Hard rules
 
