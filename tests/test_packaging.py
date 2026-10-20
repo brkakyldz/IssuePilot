@@ -107,3 +107,19 @@ def test_tool_budget_hook_refuses_then_stops(tmp_path):
 def test_tool_budget_hook_refuses_an_empty_bash_call(tmp_path):
     out = _hook(tmp_path, {"tool_name": "Bash", "tool_input": {}}, budget=40)
     assert '"deny"' in out and "without a command" in out
+
+
+def test_analysis_is_recovered_from_the_transcript_when_the_action_drops_it(tmp_path):
+    import json
+    import shutil
+    import subprocess
+
+    if not shutil.which("jq"):
+        pytest.skip("needs jq")
+    expr = re.search(r"jq -c '(\[\.\[\] \| select\(\.type == \"result\"\)\] \| last \| \.structured_output[^']*)'", INVESTIGATE).group(1)
+    transcript = tmp_path / "t.json"
+    transcript.write_text(json.dumps([{"type": "assistant"}, {"type": "result", "structured_output": {"kind": "needs_info"}}]))
+    out = subprocess.run(["jq", "-c", expr, str(transcript)], capture_output=True, text=True).stdout.strip()
+    assert json.loads(out) == {"kind": "needs_info"}
+    transcript.write_text(json.dumps([{"type": "result", "structured_output": None}]))
+    assert subprocess.run(["jq", "-c", expr, str(transcript)], capture_output=True, text=True).stdout.strip() == ""
