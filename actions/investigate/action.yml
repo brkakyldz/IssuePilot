@@ -22,8 +22,15 @@ inputs:
     description: Claude model alias or name.
     default: sonnet
   max_turns:
-    description: Upper bound on agent turns.
-    default: "30"
+    description: >-
+      Claude Code's own turn limit. Kept above the tool-call budget: the action rejects
+      a finished result whose turn count exceeds it (anthropics/claude-code-action#1758).
+    default: "60"
+  max_tool_calls:
+    description: >-
+      Hard bound on tool calls, enforced by IssuePilot's own hook: past it tools are
+      refused and the agent is told to answer; ten calls later the session stops.
+    default: "40"
   repository:
     description: Replay only. owner/name the prompt names; defaults to this repository.
     default: ""
@@ -39,7 +46,7 @@ inputs:
 outputs:
   analysis:
     description: The analysis as JSON, empty when the run produced none.
-    value: ${{ steps.claude.outputs.structured_output }}
+    value: ${{ steps.result.outputs.analysis }}
   metrics:
     description: Turns, duration, cost and error fields of the run's final result.
     value: ${{ steps.metrics.outputs.json }}
@@ -81,6 +88,9 @@ runs:
           echo "$delim"
           echo "schema=$(jq -c . "$root/schema/analysis.schema.json")"
           echo "tools=$tools"
+          echo "settings=$(jq -nc --arg hook "bash \"$GITHUB_ACTION_PATH/tool-budget.sh\"" \
+            '{permissions: {blockReadsOutsideWorkingDirectories: true},
+              hooks: {PreToolUse: [{matcher: "*", hooks: [{type: "command", command: $hook}]}]}}')"
         } >> "$GITHUB_OUTPUT"
 
     # A token pasted with a trailing newline or space is rejected as "Not logged in"
@@ -107,17 +117,40 @@ runs:
         # Harmless tripwire: if this value ever reaches the comment, the publish
         # step refuses to post (src/issuepilot/leaks.py).
         ISSUEPILOT_CANARY: issuepilot-canary-${{ github.run_id }}
+        ISSUEPILOT_TOOL_BUDGET: ${{ inputs.max_tool_calls }}
+        ISSUEPILOT_BUDGET_FILE: ${{ runner.temp }}/issuepilot-tool-calls
       with:
         claude_code_oauth_token: ${{ steps.token.outputs.value }}
         github_token: ${{ github.token }}
         prompt: ${{ steps.prep.outputs.prompt }}
-        settings: '{"permissions":{"blockReadsOutsideWorkingDirectories":true}}'
+        settings: ${{ steps.prep.outputs.settings }}
         claude_args: |
           --model ${{ inputs.model }}
           --max-turns ${{ inputs.max_turns }}
           --json-schema '${{ steps.prep.outputs.schema }}'
           --allowedTools "${{ steps.prep.outputs.tools }}"
+          --setting-sources user
+          --strict-mcp-config
           --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Read(//proc/**),Read(//sys/**),Read(~/.*),Read(~/.*/**)"
+
+    # The action drops a valid result when the turn count exceeds max_turns
+    # (backtest run 39511985945, caldav); Claude Code has already checked it against the
+    # schema, and the publish step verifies it like any other.
+    - name: Take the analysis
+      id: result
+      if: always()
+      shell: bash
+      env:
+        STRUCTURED: ${{ steps.claude.outputs.structured_output }}
+        EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+      run: |
+        if [ -n "$STRUCTURED" ]; then
+          analysis="$(printf '%s' "$STRUCTURED" | jq -c 'select(type == "object")' 2>/dev/null)"
+        elif [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then
+          analysis="$(jq -c '[.[] | select(.type == "result")] | last | .structured_output | select(type == "object")' "$EXEC_FILE" 2>/dev/null)"
+          [ -n "$analysis" ] && echo "::warning::Recovered the analysis from the transcript; the action did not pass it on."
+        fi
+        echo "analysis=${analysis:-}" >> "$GITHUB_OUTPUT"
 
     - name: Record run metrics
       id: metrics

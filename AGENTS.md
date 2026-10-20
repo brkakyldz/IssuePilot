@@ -38,7 +38,10 @@ Product intent: `README.md`. Where we are: `docs/CURRENT_STATE.md`. Why: `docs/d
   command or a `${{ }}` expression inside `run:`; pass data through `env:`.
 - Authentication is the user's own `CLAUDE_CODE_OAUTH_TOKEN`. IssuePilot never
   collects, stores or relays anyone's credentials.
-- Every run is bounded: job `timeout-minutes`, `--max-turns`, one run per issue at
-  a time (`concurrency`).
+- Every run is bounded: job `timeout-minutes`, `--max-turns`, IssuePilot's own
+  tool-call budget hook (`actions/investigate/tool-budget.sh`), one run per issue at a
+  time (`concurrency`).
+- The investigated repository never configures the agent: Claude Code runs with
+  `--setting-sources user` and `--strict-mcp-config` (ADR 0004).
 - Experiments run against the private sandbox repo `brkakyldz/issuepilot-sandbox`,
   never against a real project before the step that says so.
