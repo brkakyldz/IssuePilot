@@ -1,0 +1,39 @@
+# Tests and workflow lint. Never runs Claude and needs no secrets.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Run tests
+        run: |
+          python -m pip install --quiet pytest
+          python -m pytest -q
+
+      - name: Lint workflows
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+        run: |
+          bash <(curl -sSfL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "$ACTIONLINT_VERSION"
+          git ls-files -z '.github/workflows/*.yml' 'workflow/*.yml' 'security/*.yml' 'templates/*.yml' | xargs -0 ./actionlint
