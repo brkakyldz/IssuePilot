@@ -1,0 +1,162 @@
+# Backtest: run the investigate action from this ref on cases with known answers.
+#
+# Contract: docs/contracts/backtest.md. Start it with
+#   python evals/backtest.py run --suite evals/cases --ref <branch>
+# The plan job reads the case files; the investigate jobs only ever receive the
+# repository, commit and issue text of their own case, never the expected answer.
+# Nothing is posted anywhere.
+
+name: Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Folder of case files
+        default: evals/cases
+      ids:
+        description: Comma-separated case ids (empty = all)
+        default: ""
+
+permissions: {}
+
+concurrency:
+  group: backtest-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Plan cases
+        id: plan
+        env:
+          SUITE: ${{ inputs.suite }}
+          IDS: ${{ inputs.ids }}
+        run: python3 evals/backtest.py plan --suite "$SUITE" --ids "$IDS" --work "$RUNNER_TEMP/work"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: backtest-inputs
+          path: ${{ runner.temp }}/work
+          retention-days: 3
+
+  investigate:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        case: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: backtest-inputs
+          path: ${{ runner.temp }}/inputs
+
+      # Only the commit and its ancestors: no branches, tags or later commits that
+      # could hold the fix.
+      - name: Fetch the repository at the case's commit
+        env:
+          CASE_ID: ${{ matrix.case.id }}
+          CASE_REPO: ${{ matrix.case.repo }}
+          CASE_SHA: ${{ matrix.case.sha }}
+          INPUTS: ${{ runner.temp }}/inputs
+        run: |
+          git init -q -b main .
+          if [[ "$CASE_REPO" == fixture/* ]]; then
+            git fetch -q --no-tags "$INPUTS/fixtures/$CASE_ID.bundle" main
+          else
+            git fetch -q --no-tags "https://github.com/$CASE_REPO" "$CASE_SHA"
+          fi
+          git checkout -q -B main FETCH_HEAD
+          test "$(git rev-parse HEAD)" = "$CASE_SHA"
+          cp "$INPUTS/issues/$CASE_ID.md" .issuepilot-issue.md
+          printf '%s\n' .issuepilot-issue.md .issuepilot/ >> .git/info/exclude
+
+      - name: Check out IssuePilot (actions, prompt, schema, code only)
+        uses: actions/checkout@v7
+        with:
+          path: .issuepilot
+          persist-credentials: false
+          sparse-checkout: |
+            actions
+            prompts
+            schema
+            src
+
+      - name: Investigate
+        id: investigate
+        uses: ./.issuepilot/actions/investigate
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          issue_number: ${{ matrix.case.number }}
+          issue_file: .issuepilot-issue.md
+          repository: ${{ matrix.case.repo }}
+          commit: ${{ matrix.case.sha }}
+          language: English
+
+      - name: Verify and collect the result
+        if: always()
+        env:
+          ANALYSIS: ${{ steps.investigate.outputs.analysis }}
+          METRICS: ${{ steps.investigate.outputs.metrics }}
+          EXEC_FILE: ${{ steps.investigate.outputs.execution_file }}
+          CASE_ID: ${{ matrix.case.id }}
+        run: |
+          out="$RUNNER_TEMP/result-$CASE_ID"
+          mkdir -p "$out"
+          printf '%s' "$ANALYSIS" > "$out/analysis.json"
+          printf '%s' "${METRICS:-null}" > "$out/metrics.json"
+          git checkout -q -- . && git clean -qfd -e .issuepilot -e .issuepilot-issue.md
+          PYTHONPATH=.issuepilot/src python3 -m issuepilot.check "$out/analysis.json" . "$out/checked.json"
+          if [ -n "$EXEC_FILE" ] && [ -f "$EXEC_FILE" ]; then cp "$EXEC_FILE" "$out/transcript.json"; fi
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: result-${{ matrix.case.id }}
+          path: ${{ runner.temp }}/result-${{ matrix.case.id }}
+          retention-days: 14
+
+  score:
+    needs: [plan, investigate]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: result-*
+          path: ${{ runner.temp }}/results
+
+      - name: Score (without the cause judge)
+        env:
+          SUITE: ${{ inputs.suite }}
+          IDS: ${{ inputs.ids }}
+        run: python3 evals/backtest.py score --suite "$SUITE" --ids "$IDS" --results "$RUNNER_TEMP/results" --out "$RUNNER_TEMP/scores"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: scores
+          path: ${{ runner.temp }}/scores
+          retention-days: 30

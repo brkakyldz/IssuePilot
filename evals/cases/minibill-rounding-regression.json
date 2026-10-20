@@ -1,0 +1,71 @@
+{
+  "id": "minibill-rounding-regression",
+  "issue": {
+    "number": 2,
+    "title": "Bazı faturalarda toplam 1 kuruş eksik çıkıyor",
+    "body": "Muhasebe ekibi bazı faturalarda toplamın 1 kuruş eksik çıktığını fark etti.\nMuhasebe programındaki tutarla bizim CLI'ın verdiği tutar tutmuyor.\n\nÖrnek fatura (`fatura.json`):\n\n```json\n{\n  \"items\": [{\"name\": \"Silgi\", \"unit_price\": \"1.25\", \"quantity\": 3}],\n  \"tax_rate\": \"0.10\"\n}\n```\n\n```\n$ python -m minibill fatura.json\n4.12 TRY\n```\n\nBeklenen: **4.13 TRY** (3 × 1,25 = 3,75; %10 KDV ile 4,125 → 4,13).\n\nHer faturada olmuyor, çoğu doğru çıkıyor. Birkaç hafta öncesine kadar böyle bir\nşikâyet gelmemişti.\n"
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Initial minibill: line items, discount, VAT and a CLI",
+          "files": {
+            ".gitignore": "__pycache__/\n*.pyc\n.pytest_cache/\n.venv/\n",
+            "README.md": "# minibill\n\nA small invoicing library: line items, discounts, VAT and a CLI that prints the\ninvoice total.\n\n```bash\npython -m minibill invoice.json\n```\n\n`invoice.json`:\n\n```json\n{\n  \"items\": [{\"name\": \"Kalem\", \"unit_price\": \"12.50\", \"quantity\": 3}],\n  \"discount_rate\": \"0.10\",\n  \"tax_rate\": \"0.20\"\n}\n```\n\n## Tests\n\n```bash\npython -m pytest\n```\n",
+            "minibill/__init__.py": "from minibill.models import Invoice, LineItem\nfrom minibill.pricing import line_total, subtotal, total\n\n__all__ = [\"Invoice\", \"LineItem\", \"line_total\", \"subtotal\", \"total\"]\n",
+            "minibill/__main__.py": "import json\nimport sys\n\nfrom minibill.models import Invoice, LineItem\nfrom minibill.pricing import total\n\n\ndef load(path: str) -> Invoice:\n    with open(path, encoding=\"utf-8\") as fh:\n        data = json.load(fh)\n    items = [LineItem(**item) for item in data[\"items\"]]\n    return Invoice(\n        items=items,\n        discount_rate=data.get(\"discount_rate\", \"0\"),\n        tax_rate=data.get(\"tax_rate\", \"0.20\"),\n    )\n\n\ndef main(argv: list[str]) -> int:\n    if len(argv) != 2:\n        print(\"usage: python -m minibill invoice.json\", file=sys.stderr)\n        return 2\n    print(total(load(argv[1])))\n    return 0\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main(sys.argv))\n",
+            "minibill/models.py": "from dataclasses import dataclass, field\nfrom decimal import Decimal\n\nfrom minibill.money import to_money\n\n\n@dataclass\nclass LineItem:\n    name: str\n    unit_price: Decimal\n    quantity: int = 1\n\n    def __post_init__(self):\n        self.unit_price = to_money(self.unit_price)\n        if self.quantity < 1:\n            raise ValueError(\"quantity must be at least 1\")\n\n\n@dataclass\nclass Invoice:\n    items: list[LineItem] = field(default_factory=list)\n    discount_rate: Decimal = Decimal(\"0\")\n    tax_rate: Decimal = Decimal(\"0.20\")\n\n    def __post_init__(self):\n        self.discount_rate = to_money(self.discount_rate)\n        self.tax_rate = to_money(self.tax_rate)\n",
+            "minibill/money.py": "\"\"\"Money helpers. All amounts are Decimal; never pass floats in here.\"\"\"\n\nfrom decimal import Decimal\n\nCENT = Decimal(\"0.01\")\n\n\ndef to_money(value) -> Decimal:\n    \"\"\"Parse a user-supplied amount (\"12.50\", 12, Decimal) into a Decimal.\"\"\"\n    return Decimal(str(value))\n\n\ndef to_cents(amount: Decimal) -> Decimal:\n    \"\"\"Round to 2 decimals.\"\"\"\n    return amount.quantize(CENT)\n",
+            "minibill/pricing.py": "from decimal import Decimal\n\nfrom minibill.models import Invoice, LineItem\nfrom minibill.money import to_cents\n\n\ndef line_total(item: LineItem):\n    return to_cents(item.unit_price * item.quantity)\n\n\ndef subtotal(invoice: Invoice):\n    return sum((line_total(item) for item in invoice.items), start=Decimal(\"0\"))\n\n\ndef total(invoice: Invoice):\n    \"\"\"Subtotal, minus discount, plus VAT, rounded once at the end.\"\"\"\n    discounted = subtotal(invoice) * (1 - invoice.discount_rate)\n    return to_cents(discounted * (1 + invoice.tax_rate))\n",
+            "pyproject.toml": "[project]\nname = \"minibill\"\nversion = \"0.3.0\"\nrequires-python = \">=3.11\"\n\n[project.optional-dependencies]\ndev = [\"pytest>=8\"]\n",
+            "tests/test_pricing.py": "from decimal import Decimal\n\nfrom minibill import Invoice, LineItem, line_total, subtotal, total\n\n\ndef test_line_total_multiplies_quantity():\n    assert line_total(LineItem(\"Kalem\", \"12.50\", 3)) == Decimal(\"37.50\")\n\n\ndef test_subtotal_sums_lines():\n    invoice = Invoice(items=[LineItem(\"A\", \"10.00\", 2), LineItem(\"B\", \"5.25\")])\n    assert subtotal(invoice) == Decimal(\"25.25\")\n\n\ndef test_total_applies_discount_then_tax():\n    invoice = Invoice(items=[LineItem(\"A\", \"100.00\")], discount_rate=\"0.10\", tax_rate=\"0.20\")\n    assert total(invoice) == Decimal(\"108.00\")\n\n"
+          }
+        },
+        {
+          "message": "Round amounts half up, as Turkish invoices require (fixes #1)",
+          "files": {
+            "README.md": "# minibill\n\nA small invoicing library: line items, discounts, VAT and a CLI that prints the\ninvoice total.\n\n```bash\npython -m minibill invoice.json\n```\n\n`invoice.json`:\n\n```json\n{\n  \"items\": [{\"name\": \"Kalem\", \"unit_price\": \"12.50\", \"quantity\": 3}],\n  \"discount_rate\": \"0.10\",\n  \"tax_rate\": \"0.20\"\n}\n```\n\n## Rounding\n\nAmounts are rounded to 2 decimals, half up (0.005 -> 0.01), after every line and\non the final total, as Turkish invoicing practice expects.\n\n## Tests\n\n```bash\npython -m pytest\n```\n",
+            "minibill/money.py": "\"\"\"Money helpers. All amounts are Decimal; never pass floats in here.\"\"\"\n\nfrom decimal import ROUND_HALF_UP, Decimal\n\nCENT = Decimal(\"0.01\")\n\n\ndef to_money(value) -> Decimal:\n    \"\"\"Parse a user-supplied amount (\"12.50\", 12, Decimal) into a Decimal.\"\"\"\n    return Decimal(str(value))\n\n\ndef to_cents(amount: Decimal) -> Decimal:\n    \"\"\"Round to 2 decimals, half up: 2.675 -> 2.68.\n\n    Decimal's default is half-even (2.675 -> 2.67), which Turkish invoices\n    must not use. See #1.\n    \"\"\"\n    return amount.quantize(CENT, rounding=ROUND_HALF_UP)\n",
+            "tests/test_pricing.py": "from decimal import Decimal\n\nfrom minibill import Invoice, LineItem, line_total, subtotal, total\n\n\ndef test_line_total_multiplies_quantity():\n    assert line_total(LineItem(\"Kalem\", \"12.50\", 3)) == Decimal(\"37.50\")\n\n\ndef test_subtotal_sums_lines():\n    invoice = Invoice(items=[LineItem(\"A\", \"10.00\", 2), LineItem(\"B\", \"5.25\")])\n    assert subtotal(invoice) == Decimal(\"25.25\")\n\n\ndef test_total_applies_discount_then_tax():\n    invoice = Invoice(items=[LineItem(\"A\", \"100.00\")], discount_rate=\"0.10\", tax_rate=\"0.20\")\n    assert total(invoice) == Decimal(\"108.00\")\n\n\n\ndef test_rounds_half_up():\n    # Turkish invoicing rounds 0.005 up; Decimal's default would give 2.67 (#1).\n    assert line_total(LineItem(\"Half\", \"2.675\")) == Decimal(\"2.68\")\n"
+          }
+        },
+        {
+          "message": "Simplify money helpers: plain floats instead of Decimal\n\nDecimal leaked into the CLI output and JSON round-trips (Decimal('37.50'))\nand every caller had to remember to pass strings. Floats are plenty for\ninvoice-sized amounts. Drops the Decimal-specific rounding test.",
+          "files": {
+            "minibill/models.py": "from dataclasses import dataclass, field\n\nfrom minibill.money import to_money\n\n\n@dataclass\nclass LineItem:\n    name: str\n    unit_price: float\n    quantity: int = 1\n\n    def __post_init__(self):\n        self.unit_price = to_money(self.unit_price)\n        if self.quantity < 1:\n            raise ValueError(\"quantity must be at least 1\")\n\n\n@dataclass\nclass Invoice:\n    items: list[LineItem] = field(default_factory=list)\n    discount_rate: float = 0.0\n    tax_rate: float = 0.20\n\n    def __post_init__(self):\n        self.discount_rate = to_money(self.discount_rate)\n        self.tax_rate = to_money(self.tax_rate)\n",
+            "minibill/money.py": "\"\"\"Money helpers.\"\"\"\n\n\ndef to_money(value) -> float:\n    \"\"\"Parse a user-supplied amount (\"12.50\", 12) into a float.\"\"\"\n    return float(value)\n\n\ndef to_cents(amount: float) -> float:\n    \"\"\"Round to 2 decimals.\"\"\"\n    return round(amount, 2)\n",
+            "minibill/pricing.py": "from minibill.models import Invoice, LineItem\nfrom minibill.money import to_cents\n\n\ndef line_total(item: LineItem):\n    return to_cents(item.unit_price * item.quantity)\n\n\ndef subtotal(invoice: Invoice):\n    return sum((line_total(item) for item in invoice.items), start=0.0)\n\n\ndef total(invoice: Invoice):\n    \"\"\"Subtotal, minus discount, plus VAT, rounded once at the end.\"\"\"\n    discounted = subtotal(invoice) * (1 - invoice.discount_rate)\n    return to_cents(discounted * (1 + invoice.tax_rate))\n",
+            "tests/test_pricing.py": "from minibill import Invoice, LineItem, line_total, subtotal, total\n\n\ndef test_line_total_multiplies_quantity():\n    assert line_total(LineItem(\"Kalem\", \"12.50\", 3)) == 37.50\n\n\ndef test_subtotal_sums_lines():\n    invoice = Invoice(items=[LineItem(\"A\", \"10.00\", 2), LineItem(\"B\", \"5.25\")])\n    assert subtotal(invoice) == 25.25\n\n\ndef test_total_applies_discount_then_tax():\n    invoice = Invoice(items=[LineItem(\"A\", \"100.00\")], discount_rate=\"0.10\", tax_rate=\"0.20\")\n    assert total(invoice) == 108.00\n"
+          }
+        },
+        {
+          "message": "Add --currency flag to the CLI",
+          "files": {
+            "README.md": "# minibill\n\nA small invoicing library: line items, discounts, VAT and a CLI that prints the\ninvoice total.\n\n```bash\npython -m minibill invoice.json            # 40.50 TRY\npython -m minibill invoice.json --currency EUR\n```\n\n`invoice.json`:\n\n```json\n{\n  \"items\": [{\"name\": \"Kalem\", \"unit_price\": \"12.50\", \"quantity\": 3}],\n  \"discount_rate\": \"0.10\",\n  \"tax_rate\": \"0.20\"\n}\n```\n\n## Rounding\n\nAmounts are rounded to 2 decimals, half up (0.005 -> 0.01), after every line and\non the final total, as Turkish invoicing practice expects.\n\n## Tests\n\n```bash\npython -m pytest\n```\n",
+            "minibill/__main__.py": "import argparse\nimport json\nimport sys\n\nfrom minibill.models import Invoice, LineItem\nfrom minibill.pricing import total\n\n\ndef load(path: str) -> Invoice:\n    with open(path, encoding=\"utf-8\") as fh:\n        data = json.load(fh)\n    items = [LineItem(**item) for item in data[\"items\"]]\n    return Invoice(\n        items=items,\n        discount_rate=data.get(\"discount_rate\", \"0\"),\n        tax_rate=data.get(\"tax_rate\", \"0.20\"),\n    )\n\n\ndef main(argv: list[str]) -> int:\n    parser = argparse.ArgumentParser(prog=\"python -m minibill\")\n    parser.add_argument(\"invoice\", help=\"path to an invoice JSON file\")\n    parser.add_argument(\"--currency\", default=\"TRY\", help=\"currency code to print (default: TRY)\")\n    args = parser.parse_args(argv[1:])\n    print(f\"{total(load(args.invoice)):.2f} {args.currency}\")\n    return 0\n\n\nif __name__ == \"__main__\":\n    raise SystemExit(main(sys.argv))\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "minibill/money.py",
+        "start_line": 4,
+        "end_line": 11
+      }
+    ],
+    "cause": "Commit \"Simplify money helpers\" replaced Decimal with ROUND_HALF_UP by float and the built-in round(), so amounts exactly at half a cent (4.125) round down instead of up.",
+    "must_mention": [
+      "README"
+    ]
+  },
+  "acceptance": [
+    "M3-A1",
+    "M3-A4"
+  ],
+  "notes": "The sandbox planted regression (issuepilot-sandbox #2) as a fixture. The README still promises half-up rounding; three M2 runs never noticed that (issue #6)."
+}
