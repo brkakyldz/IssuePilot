@@ -18,7 +18,7 @@ def load(name: str) -> dict:
 
 def rendered(analysis: dict) -> str:
     result = verify(analysis, REPO, lambda kind, ref: True)
-    return render_analysis(result, "o/r", SHA, RUN, METRICS)
+    return render_analysis(result, "o/r", SHA, RUN, METRICS, "Turkish")
 
 
 def visible_part(comment: str) -> str:
@@ -100,7 +100,7 @@ def test_failure_comment_names_the_cause():
     metrics = {"subtype": "success", "is_error": True, "api_error_status": 401,
                "result": "Not logged in · Please run /login", "num_turns": 1, "duration_ms": 2227}
     failure = classify("failure", metrics)
-    comment = render_failure(failure, SHA, RUN, metrics)
+    comment = render_failure(failure, SHA, RUN, metrics, "Turkish")
     assert failure.code == "auth"
     assert "Analiz yapılamadı" in comment and "claude setup-token" in comment
 
@@ -111,3 +111,23 @@ def test_failure_classification():
     assert classify("failure", {"api_error_status": 429}).code == "usage_limit"
     assert classify("failure", {"subtype": "error_max_turns"}).code == "max_turns"
     assert classify("failure", {"subtype": "success", "is_error": False}).code == "no_output"
+
+
+def test_labels_follow_the_configured_language():
+    result = verify(load("v2_issue2_analysis.json"), REPO, lambda kind, ref: True)
+    english = render_analysis(result, "o/r", SHA, RUN, METRICS)
+    assert "### IssuePilot · Bug analysis · confidence: high" in english
+    for label in ["**Cause:**", "**Where:**", "**Suggestion:**", "**Not sure about:**", "6 turns"]:
+        assert label in english
+    assert "Neden" not in english
+    # A language without a label table gets English labels around Claude's text.
+    assert "**Cause:**" in render_analysis(result, "o/r", SHA, RUN, METRICS, "German")
+
+
+def test_every_failure_has_a_message_in_every_language():
+    from issuepilot.i18n import EN, TR
+    codes = {"auth", "usage_limit", "max_turns", "cancelled", "no_output", "secret_detected", "not_started"}
+    assert set(EN["failures"]) == set(TR["failures"]) == codes
+    assert EN.keys() == TR.keys()
+    english = render_failure(classify("cancelled", None), SHA, RUN, None)
+    assert "Analysis failed" in english and "cancelled" in english

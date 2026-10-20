@@ -1,0 +1,42 @@
+# IssuePilot publish: verify the analysis, render the comment and post or update it.
+#
+# Runs in a job without Claude (ADR 0001). Expects a fresh checkout of the
+# investigated commit in the workspace: evidence is checked against files the
+# investigate job could not have touched. Uses only the Python standard library.
+
+name: IssuePilot publish
+description: Verify an IssuePilot analysis against the checkout and publish it as an issue comment.
+
+inputs:
+  issue_number:
+    description: Issue to comment on.
+    required: true
+  analysis:
+    description: The investigate action's analysis output (may be empty).
+    default: ""
+  metrics:
+    description: The investigate action's metrics output (may be empty).
+    default: ""
+  investigate_result:
+    description: Result of the investigate job: success, failure or cancelled.
+    required: true
+  language:
+    description: Language of the comment's labels.
+    default: English
+
+runs:
+  using: composite
+  steps:
+    - name: Verify, render and publish
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        ANALYSIS: ${{ inputs.analysis }}
+        METRICS: ${{ inputs.metrics }}
+        INVESTIGATE_RESULT: ${{ inputs.investigate_result }}
+        ISSUE_NUMBER: ${{ inputs.issue_number }}
+        LANGUAGE: ${{ inputs.language }}
+        REPO: ${{ github.repository }}
+        SHA: ${{ github.sha }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: PYTHONPATH="$GITHUB_ACTION_PATH/../../src" python3 -m issuepilot

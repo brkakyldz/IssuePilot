@@ -59,7 +59,7 @@ job with no Claude in it checks that JSON and writes the issue comment.
 - **Open, to be verified in M1:** that `--json-schema` works with the OAuth token on
   an `issues` event, that the action runs with a read-only `github_token`, and how
   long and how much quota one run takes.
-- **Open, decided at packaging (M4):** distribution as a reusable workflow, and how
-  that workflow fetches IssuePilot's own prompt and scripts at the matching version.
+- **Decided at packaging (M4), ADR 0003:** distribution as a reusable workflow over
+  two composite actions that carry the prompt and scripts at their own ref.
 - **Cost to reverse:** medium. The prompt and schema would survive a move to the
   Agent SDK; the workflow wiring would not.

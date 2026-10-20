@@ -1,0 +1,110 @@
+# IssuePilot: investigate a new issue with Claude Code, verify and publish the result.
+#
+# Reusable workflow; repositories call it with templates/issuepilot.yml (see
+# docs/setup.md). Job 1 (investigate) runs Claude with a read-only GitHub token and
+# no write tools; it returns JSON. Job 2 (publish) has no Claude in it: it checks the
+# cited evidence against a fresh checkout, renders the comment and is the only job
+# that can write to the issue. ADR 0001, 0002, 0003.
+#
+# The two `uses: brkakyldz/IssuePilot/actions/...` refs below say @main on main; a
+# release commit pins them to its own tag (scripts/release.py, ADR 0003).
+
+name: IssuePilot
+
+on:
+  workflow_call:
+    inputs:
+      issue_number:
+        description: Issue to investigate; defaults to the issue of the triggering event.
+        type: string
+        default: ""
+      language:
+        description: Language of the analysis and the comment.
+        type: string
+        default: English
+      model:
+        description: Claude model alias or name.
+        type: string
+        default: sonnet
+      max_turns:
+        description: Upper bound on agent turns.
+        type: number
+        default: 30
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        description: The user's Claude subscription token, from `claude setup-token`.
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: issuepilot-${{ github.repository }}-${{ inputs.issue_number || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  investigate:
+    if: >-
+      github.event_name != 'issues' ||
+      (github.event.issue.user.type != 'Bot' &&
+       !contains(github.event.issue.labels.*.name, 'issuepilot:skip'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    outputs:
+      analysis: ${{ steps.investigate.outputs.analysis }}
+      metrics: ${{ steps.investigate.outputs.metrics }}
+    env:
+      ISSUE_NUMBER: ${{ inputs.issue_number || github.event.issue.number }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Investigate
+        id: investigate
+        uses: brkakyldz/IssuePilot/actions/investigate@main
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          issue_number: ${{ env.ISSUE_NUMBER }}
+          language: ${{ inputs.language }}
+          model: ${{ inputs.model }}
+          max_turns: ${{ inputs.max_turns }}
+
+      - name: Keep the transcript
+        if: always() && steps.investigate.outputs.execution_file != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: issuepilot-transcript-${{ env.ISSUE_NUMBER }}-${{ github.run_attempt }}
+          path: ${{ steps.investigate.outputs.execution_file }}
+          retention-days: 7
+
+  publish:
+    needs: investigate
+    if: always() && needs.investigate.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      # A fresh checkout at the same commit: evidence is checked against files the
+      # investigate job could not have touched.
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Verify, render and publish
+        uses: brkakyldz/IssuePilot/actions/publish@main
+        with:
+          issue_number: ${{ inputs.issue_number || github.event.issue.number }}
+          analysis: ${{ needs.investigate.outputs.analysis }}
+          metrics: ${{ needs.investigate.outputs.metrics }}
+          investigate_result: ${{ needs.investigate.result }}
+          language: ${{ inputs.language }}
