@@ -1,0 +1,51 @@
+{
+  "id": "H01_discount-truncation",
+  "issue": {
+    "number": 41,
+    "title": "Receipt total is one cent higher than my calculator says",
+    "body": "I'm trying out the cart with a 15% discount code. I add 2 x Notebook at 19.99.\n\nCalculator: 39.98 minus 15% = 33.983, so 33.98.\nReceipt prints:\n\n    Notebook x2  $39.98\n    Discount (15%)  -$5.99\n    TOTAL  $33.99\n\nSo we charge a cent more than we should. It doesn't happen with 10% or 20% on round prices, only on some combinations. I suspect floating point somewhere in the total calculation.\n\nPython 3.11, current main."
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add Cart and money helpers",
+          "files": {
+            "README.md": "# shop\n\nTiny shopping-cart library used by our storefront prototype.\n\n## Features\n\n- Prices are accepted as decimal strings or numbers and stored as integer cents.\n\n## Usage\n\n    from shop.cart import Cart\n    cart = Cart()\n    cart.add('Notebook', '19.99', qty=2)\n    print(cart.total())\n",
+            "shop/__init__.py": "# shop package\n",
+            "shop/money.py": "from decimal import Decimal, ROUND_HALF_UP\n\n\ndef to_cents(amount):\n    value = Decimal(str(amount)) * 100\n    return int(value.quantize(Decimal(1), rounding=ROUND_HALF_UP))\n\n\ndef format_cents(cents):\n    sign = '-' if cents < 0 else ''\n    cents = abs(cents)\n    return f'{sign}${cents // 100}.{cents % 100:02d}'\n",
+            "shop/cart.py": "from .money import to_cents\n\n\nclass Cart:\n    def __init__(self):\n        self.items = []\n\n    def add(self, name, price, qty=1):\n        self.items.append((name, to_cents(price), qty))\n\n    def line_totals(self):\n        return [cents * qty for _, cents, qty in self.items]\n\n    def total(self):\n        return sum(self.line_totals())\n"
+          }
+        },
+        {
+          "message": "Add percentage discounts",
+          "files": {
+            "README.md": "# shop\n\nTiny shopping-cart library used by our storefront prototype.\n\n## Features\n\n- Prices are accepted as decimal strings or numbers and stored as integer cents.\n- Percentage discounts apply per line and are rounded to the nearest cent, half up.\n\n## Usage\n\n    from shop.cart import Cart\n    cart = Cart(discount_percent=15)\n    cart.add('Notebook', '19.99', qty=2)\n    print(cart.total())\n",
+            "shop/discounts.py": "# Discount rules applied to cart lines.\n\n\ndef percent_off(line_cents, percent):\n    # discount in cents for a single cart line\n    return int(line_cents * percent / 100)\n\n\ndef apply_discounts(lines, percent):\n    # returns (total after discount, discount) in cents\n    discount = sum(percent_off(cents, percent) for cents in lines)\n    return sum(lines) - discount, discount\n",
+            "shop/cart.py": "from .money import to_cents\nfrom .discounts import apply_discounts\n\n\nclass Cart:\n    def __init__(self, discount_percent=0):\n        self.discount_percent = discount_percent\n        self.items = []\n\n    def add(self, name, price, qty=1):\n        self.items.append((name, to_cents(price), qty))\n\n    def line_totals(self):\n        return [cents * qty for _, cents, qty in self.items]\n\n    def total(self):\n        total, _ = apply_discounts(self.line_totals(), self.discount_percent)\n        return total\n"
+          }
+        },
+        {
+          "message": "Add plain-text receipt and tests",
+          "files": {
+            "README.md": "# shop\n\nTiny shopping-cart library used by our storefront prototype.\n\n## Features\n\n- Prices are accepted as decimal strings or numbers and stored as integer cents.\n- Percentage discounts apply per line and are rounded to the nearest cent, half up.\n- `render(cart)` in `shop/receipt.py` prints a plain-text receipt.\n\n## Usage\n\n    from shop.cart import Cart\n    cart = Cart(discount_percent=15)\n    cart.add('Notebook', '19.99', qty=2)\n    print(cart.total())\n",
+            "shop/receipt.py": "from .money import format_cents\nfrom .discounts import apply_discounts\n\n\ndef render(cart):\n    lines = []\n    for name, cents, qty in cart.items:\n        lines.append(f'{name} x{qty}  {format_cents(cents * qty)}')\n    _, discount = apply_discounts(cart.line_totals(), cart.discount_percent)\n    if discount:\n        lines.append(f'Discount ({cart.discount_percent}%)  -{format_cents(discount)}')\n    lines.append(f'TOTAL  {format_cents(cart.total())}')\n    return '\\n'.join(lines)\n",
+            "tests/test_cart.py": "from shop.cart import Cart\n\n\ndef test_plain_total():\n    cart = Cart()\n    cart.add('Pen', '1.50', qty=2)\n    assert cart.total() == 300\n\n\ndef test_ten_percent_discount():\n    cart = Cart(discount_percent=10)\n    cart.add('Pen', '2.00', qty=5)\n    assert cart.total() == 900\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {"path": "shop/discounts.py", "start_line": 4, "end_line": 6}
+    ],
+    "cause": "percent_off in shop/discounts.py truncates the per-line discount with int() instead of rounding it half up, so the discount is a cent too small and the total a cent too high.",
+    "must_mention": [],
+    "must_not_mention": [],
+    "no_fix": false
+  },
+  "acceptance": ["M3-A1", "M3-A2"],
+  "notes": "Symptom shows in the receipt/cart total; cause is in discounts.py. Reporter guesses floating point (wrong). README promises half-up rounding of discounts, so a good analysis may also note the doc/code disagreement."
+}

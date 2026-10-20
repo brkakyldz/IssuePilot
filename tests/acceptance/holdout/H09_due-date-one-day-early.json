@@ -1,0 +1,47 @@
+{
+  "id": "H09_due-date-one-day-early",
+  "issue": {
+    "number": 52,
+    "title": "Invoice PDF shows due date one day early on the Chicago server",
+    "body": "Invoice issued 2024-03-01 with 30 day terms should be due 2024-03-31. The PDFs generated on our Chicago server say 2024-03-30. On my laptop in Berlin the same invoice says 2024-03-31, and the unit test passes on CI. Same commit everywhere.\n\nIt isn't always off: some invoices are right on the server too, I haven't found the pattern. I suspect the day arithmetic when crossing a month boundary, since March has 31 days.\n\nNode 20."
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add date parsing and formatting helpers",
+          "files": {
+            "README.md": "# invoicer\n\nBuilds invoice summaries for the billing service.\n\nDates on invoices are calendar dates (`YYYY-MM-DD`) and are handled in UTC.\n",
+            "package.json": "{\n  \"name\": \"invoicer\",\n  \"version\": \"0.4.0\",\n  \"main\": \"src/invoice.js\",\n  \"scripts\": {\n    \"test\": \"node --test\"\n  }\n}\n",
+            "src/dates.js": "'use strict';\n\n// All invoice dates are plain calendar dates, held as midnight UTC.\nfunction parseISODate(text) {\n  const m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(text);\n  if (!m) throw new Error(`invalid date: ${text}`);\n  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));\n}\n\nfunction addDays(date, days) {\n  const result = new Date(date.getTime());\n  result.setUTCDate(result.getUTCDate() + days);\n  return result;\n}\n\nmodule.exports = { parseISODate, addDays };\n",
+            "src/format.js": "'use strict';\n\nfunction pad(n) {\n  return String(n).padStart(2, '0');\n}\n\nfunction formatDate(date) {\n  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;\n}\n\nfunction formatMoney(cents) {\n  return `$${(cents / 100).toFixed(2)}`;\n}\n\nmodule.exports = { formatDate, formatMoney, pad };\n"
+          }
+        },
+        {
+          "message": "Add invoice summary with due date",
+          "files": {
+            "src/invoice.js": "'use strict';\n\nconst { parseISODate, addDays } = require('./dates');\nconst { formatDate, formatMoney } = require('./format');\n\nfunction dueDateLabel(invoice) {\n  const due = addDays(parseISODate(invoice.issued), invoice.termsDays);\n  return formatDate(due);\n}\n\nfunction summary(invoice) {\n  const total = invoice.lines.reduce((sum, l) => sum + l.cents * l.qty, 0);\n  return `Invoice ${invoice.number}: ${formatMoney(total)} due ${dueDateLabel(invoice)}`;\n}\n\nmodule.exports = { dueDateLabel, summary };\n"
+          }
+        },
+        {
+          "message": "Add invoice tests",
+          "files": {
+            "test/invoice.test.js": "const test = require('node:test');\nconst assert = require('node:assert');\nconst { dueDateLabel, summary } = require('../src/invoice');\n\nconst invoice = {\n  number: 'INV-1001',\n  issued: '2024-03-01',\n  termsDays: 30,\n  lines: [{ cents: 2500, qty: 2 }],\n};\n\ntest('due date is issued date plus terms', () => {\n  assert.strictEqual(dueDateLabel(invoice), '2024-03-31');\n});\n\ntest('summary contains total and due date', () => {\n  assert.strictEqual(summary(invoice), 'Invoice INV-1001: $50.00 due 2024-03-31');\n});\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {"path": "src/format.js", "start_line": 7, "end_line": 9}
+    ],
+    "cause": "formatDate in src/format.js reads the date with local-time getters (getFullYear/getMonth/getDate) although dates are held as midnight UTC, so in time zones behind UTC the formatted day is the previous one.",
+    "must_mention": [],
+    "must_not_mention": [],
+    "no_fix": false
+  },
+  "acceptance": ["M3-A1", "M3-A2"],
+  "notes": "Cross-file: symptom in invoice.js dueDateLabel, cause in format.js. Reporter blames month-boundary arithmetic (wrong). dates.js and the README both state UTC handling, so the doc is right and the formatter is the outlier."
+}

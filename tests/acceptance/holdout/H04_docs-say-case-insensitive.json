@@ -1,0 +1,51 @@
+{
+  "id": "H04_docs-say-case-insensitive",
+  "issue": {
+    "number": 9,
+    "title": "Settings from .env are not picked up",
+    "body": "I copied the example app and adjusted it. My .env contains:\n\n    DATABASE_URL=postgres://localhost/app\n    PORT=9000\n\nIn the app I read the settings like this:\n\n    config = Config.from_file('.env')\n    db_url = config.get('database_url')\n    port = config.get_int('port', 8000)\n\n`config.get('database_url')` raises `KeyError: 'database_url'`, and the app starts on port 8000 instead of 9000, as if the PORT line wasn't there. If I copy the key names exactly as they appear in the file it works, but we use lower-case names everywhere else in our code.\n\nconfload 0.1.0, Python 3.10."
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add dotenv parser and Config",
+          "files": {
+            "README.md": "# confload\n\nLoad settings from dotenv-style files or environment variables.\n\nSee docs/usage.md once it exists.\n",
+            "confload/__init__.py": "# confload package\n",
+            "confload/parser.py": "def parse_env(text):\n    values = {}\n    for raw in text.splitlines():\n        line = raw.strip()\n        if not line or line.startswith('#') or '=' not in line:\n            continue\n        key, _, value = line.partition('=')\n        values[key.strip()] = value.strip()\n    return values\n",
+            "confload/config.py": "import os\n\nfrom .parser import parse_env\n\n_MISSING = object()\n\n\nclass Config:\n    def __init__(self, values=None):\n        self._values = dict(values or {})\n\n    @classmethod\n    def from_file(cls, path):\n        with open(path, encoding='utf-8') as fh:\n            return cls(parse_env(fh.read()))\n\n    @classmethod\n    def from_environ(cls, prefix=''):\n        return cls({k[len(prefix):]: v for k, v in os.environ.items() if k.startswith(prefix)})\n\n    def get(self, key, default=_MISSING):\n        if key in self._values:\n            return self._values[key]\n        if default is _MISSING:\n            raise KeyError(key)\n        return default\n\n    def get_int(self, key, default=_MISSING):\n        return int(self.get(key, default))\n",
+            "tests/test_parser.py": "from confload.parser import parse_env\n\n\ndef test_parses_pairs_and_skips_comments():\n    text = '# comment\\nA=1\\n\\nB = two\\n'\n    assert parse_env(text) == {'A': '1', 'B': 'two'}\n"
+          }
+        },
+        {
+          "message": "Document usage, key names and types",
+          "files": {
+            "docs/usage.md": "# Usage\n\n## Loading settings\n\n    config = Config.from_file('.env')\n    config.get('database_url')\n\nUse `Config.from_file(path)` for a dotenv-style file or `Config.from_environ(prefix)` for environment variables. A `default` passed to `get` is returned when the key is missing.\n\n## Key names\n\nKey names are case-insensitive: `DATABASE_URL`, `database_url` and `Database_Url` all refer to the same setting, so you can use the style that fits your code.\n\n## Types\n\n`get_int` converts the value to an integer and raises `ValueError` when it is not a number.\n",
+            "README.md": "# confload\n\nLoad settings from dotenv-style files or environment variables.\n\nSee [docs/usage.md](docs/usage.md) for the full guide.\n"
+          }
+        },
+        {
+          "message": "Add example app",
+          "files": {
+            "example/.env": "# example settings\nDATABASE_URL=postgres://localhost/app\nPORT=9000\n",
+            "example/app.py": "from confload.config import Config\n\nconfig = Config.from_file('example/.env')\ndb_url = config.get('DATABASE_URL')\nport = config.get_int('PORT', 8000)\nprint(f'connecting to {db_url} on port {port}')\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {"path": "confload/config.py", "start_line": 21, "end_line": 26},
+      {"path": "confload/parser.py", "start_line": 7, "end_line": 8}
+    ],
+    "cause": "Keys are stored exactly as written in the file and looked up verbatim in Config.get, with no case normalisation anywhere, although docs/usage.md says key names are case-insensitive.",
+    "must_mention": ["usage.md"],
+    "must_not_mention": [],
+    "no_fix": false
+  },
+  "acceptance": ["M3-A1", "M3-A4"],
+  "notes": "Documentation (docs/usage.md) promises case-insensitive keys; code is case-sensitive. The example app only uses upper-case names so it hides the problem. Reporter does not name the docs."
+}

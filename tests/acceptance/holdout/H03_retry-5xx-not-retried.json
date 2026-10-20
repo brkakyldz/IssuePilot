@@ -1,0 +1,50 @@
+{
+  "id": "H03_retry-5xx-not-retried",
+  "issue": {
+    "number": 23,
+    "title": "fetchkit gives up immediately when the server answers 503",
+    "body": "Our CDN returned a 503 for a few seconds during a deploy and fetchkit failed right away:\n\n    $ fetchkit https://cdn.example.com/build/app.tar.gz -o app.tar.gz\n    error: HTTP 503 for https://cdn.example.com/build/app.tar.gz\n\nIt returned instantly, there was no waiting at all. Running it again 10 seconds later worked. Our previous download tool would have ridden out the blip.\n\nI'm using the defaults, no flags. fetchkit 0.3.1, Python 3.12 on Linux."
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add Client with get()",
+          "files": {
+            "README.md": "# fetchkit\n\nA small HTTP download helper with a friendly CLI.\n\n    fetchkit URL [-o FILE]\n",
+            "fetchkit/__init__.py": "# fetchkit package\n",
+            "fetchkit/errors.py": "class FetchError(Exception):\n    pass\n\n\nclass HTTPStatusError(FetchError):\n    def __init__(self, status, url):\n        super().__init__(f'HTTP {status} for {url}')\n        self.status = status\n",
+            "fetchkit/client.py": "import urllib.error\nimport urllib.request\n\nfrom .errors import HTTPStatusError\n\n\nclass Response:\n    def __init__(self, status, body):\n        self.status = status\n        self.body = body\n\n\nclass Client:\n    def __init__(self, retries=3, backoff=0.5, timeout=10):\n        self.retries = retries\n        self.backoff = backoff\n        self.timeout = timeout\n\n    def _once(self, url):\n        try:\n            with urllib.request.urlopen(url, timeout=self.timeout) as resp:\n                return Response(resp.status, resp.read())\n        except urllib.error.HTTPError as exc:\n            return Response(exc.code, exc.read())\n\n    def get(self, url):\n        resp = self._once(url)\n        if resp.status >= 400:\n            raise HTTPStatusError(resp.status, url)\n        return resp\n"
+          }
+        },
+        {
+          "message": "Add retry helper with exponential backoff",
+          "files": {
+            "fetchkit/retry.py": "import time\n\nRETRYABLE = (ConnectionError, TimeoutError)\n\n\ndef with_retries(func, retries=3, backoff=0.5, sleep=time.sleep):\n    attempt = 0\n    while True:\n        try:\n            return func()\n        except RETRYABLE:\n            if attempt >= retries:\n                raise\n            sleep(backoff * (2 ** attempt))\n            attempt += 1\n",
+            "fetchkit/client.py": "import urllib.error\nimport urllib.request\n\nfrom .errors import HTTPStatusError\nfrom .retry import with_retries\n\n\nclass Response:\n    def __init__(self, status, body):\n        self.status = status\n        self.body = body\n\n\nclass Client:\n    def __init__(self, retries=3, backoff=0.5, timeout=10):\n        self.retries = retries\n        self.backoff = backoff\n        self.timeout = timeout\n\n    def _once(self, url):\n        try:\n            with urllib.request.urlopen(url, timeout=self.timeout) as resp:\n                return Response(resp.status, resp.read())\n        except urllib.error.HTTPError as exc:\n            return Response(exc.code, exc.read())\n\n    def get(self, url):\n        resp = with_retries(lambda: self._once(url), self.retries, self.backoff)\n        if resp.status >= 400:\n            raise HTTPStatusError(resp.status, url)\n        return resp\n",
+            "README.md": "# fetchkit\n\nA small HTTP download helper with a friendly CLI.\n\n    fetchkit URL [-o FILE]\n\n## Reliability\n\nfetchkit retries a request up to `retries` times (default 3) when it hits a connection error, a timeout or an HTTP 5xx response, waiting `backoff * 2**attempt` seconds between attempts. 4xx responses are never retried.\n"
+          }
+        },
+        {
+          "message": "Add command line interface",
+          "files": {
+            "fetchkit/cli.py": "import argparse\nimport sys\n\nfrom .client import Client\nfrom .errors import FetchError\n\n\ndef main(argv=None):\n    parser = argparse.ArgumentParser(prog='fetchkit')\n    parser.add_argument('url')\n    parser.add_argument('-o', '--output', help='write the body to this file')\n    parser.add_argument('--retries', type=int, default=3)\n    args = parser.parse_args(argv)\n    client = Client(retries=args.retries)\n    try:\n        resp = client.get(args.url)\n    except FetchError as exc:\n        print(f'error: {exc}', file=sys.stderr)\n        return 1\n    if args.output:\n        with open(args.output, 'wb') as fh:\n            fh.write(resp.body)\n    else:\n        sys.stdout.buffer.write(resp.body)\n    return 0\n\n\nif __name__ == '__main__':\n    sys.exit(main())\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {"path": "fetchkit/retry.py", "start_line": 3, "end_line": 15},
+      {"path": "fetchkit/client.py", "start_line": 24, "end_line": 30}
+    ],
+    "cause": "Only ConnectionError and TimeoutError are retried, while an HTTP 5xx is returned as a normal Response and turned into HTTPStatusError after the retry wrapper has finished, so 5xx responses are never retried although the README promises it.",
+    "must_mention": ["README"],
+    "must_not_mention": [],
+    "no_fix": false
+  },
+  "acceptance": ["M3-A1", "M3-A4"],
+  "notes": "Docs/code disagreement: README promises retries on HTTP 5xx. The issue never mentions the README. Check client.py: line 24-25 swallow HTTPError into a Response, 27-31 raise after with_retries."
+}
