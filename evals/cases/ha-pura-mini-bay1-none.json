@@ -1,0 +1,27 @@
+{
+  "id": "ha-pura-mini-bay1-none",
+  "issue": {
+    "number": 120,
+    "title": "Error doing job: Task exception was never retrieved (task: None)",
+    "body": "### The problem\n\nI am generally having issues with my Pura diffusers (1 Pura Plus, 2 Pura 4, 1 Pura Mini) and cannot turn them on/off, switch fragrances (for Plus and 4), or change the fragrance intensity using HA\n\n### What version of Home Assistant Core are you running?\n\ncore-2026.1.3\n\n### What was the last working version of Home Assistant Core?\n\n_No response_\n\n### Diagnostics information\n\n[home-assistant_pura_2026-01-31T17-27-45.718Z.log](https://github.com/user-attachments/files/24984360/home-assistant_pura_2026-01-31T17-27-45.718Z.log)\n\n### Anything in the logs that might be useful?\n\n```txt\nLogger: homeassistant\nSource: custom_components/pura/binary_sensor.py:37\nintegration: Pura (documentation, issues)\nFirst occurred: January 29, 2026 at 9:52:10 PM (3563 occurrences)\nLast logged: 11:22:12 AM\n\nError doing job: Task exception was never retrieved (task: None)\nTraceback (most recent call last):\n  File \"/usr/src/homeassistant/homeassistant/helpers/update_coordinator.py\", line 294, in _handle_refresh_interval\n    await self._async_refresh(log_failures=True, scheduled=True)\n  File \"/usr/src/homeassistant/homeassistant/helpers/update_coordinator.py\", line 533, in _async_refresh\n    self.async_update_listeners()\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/usr/src/homeassistant/homeassistant/helpers/update_coordinator.py\", line 200, in async_update_listeners\n    update_callback()\n    ~~~~~~~~~~~~~~~^^\n  File \"/usr/src/homeassistant/homeassistant/helpers/update_coordinator.py\", line 613, in _handle_coordinator_update\n    self.async_write_ha_state()\n    ~~~~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/usr/src/homeassistant/homeassistant/helpers/entity.py\", line 1024, in async_write_ha_state\n    self._async_write_ha_state()\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/usr/src/homeassistant/homeassistant/helpers/entity.py\", line 1149, in _async_write_ha_state\n    self.__async_calculate_state()\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"/usr/src/homeassistant/homeassistant/helpers/entity.py\", line 1086, in __async_calculate_state\n    state = self._stringify_state(available)\n  File \"/usr/src/homeassistant/homeassistant/helpers/entity.py\", line 1030, in _stringify_state\n    if (state := self.state) is None:\n                 ^^^^^^^^^^\n  File \"/usr/src/homeassistant/homeassistant/components/binary_sensor/__init__.py\", line 200, in state\n    if (is_on := self.is_on) is None:\n                 ^^^^^^^^^^\n  File \"/config/custom_components/pura/binary_sensor.py\", line 86, in is_on\n    return self.entity_description.on_fn(self.get_device())\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^\n  File \"/config/custom_components/pura/binary_sensor.py\", line 37, in <lambda>\n    on_fn=lambda data: data.get(\"bay1\", {}).get(\"lowFragrance\", False),\n                       ^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: 'NoneType' object has no attribute 'get'\n```\n\n### Additional information\n\nI generally don't really know what I'm doing so apologies if this is a stupid question or an error of my own doing.  Really appreciate you!!"
+  },
+  "source": {
+    "repo": "natekspencer/ha-pura",
+    "sha": "a74ad9327c4f2b6775d7af9fb36a09bb6d36bd06"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "custom_components/pura/binary_sensor.py",
+        "start_line": 34,
+        "end_line": 40
+      }
+    ],
+    "cause": "The low_fragrance on_fn lambda in custom_components/pura/binary_sensor.py uses data.get(\"bay1\", {}).get(...), which raises AttributeError when the API returns bay1 as None (Pura Mini), breaking every coordinator update."
+  },
+  "acceptance": [
+    "M3-A1"
+  ],
+  "notes": "{\"url\": \"https://github.com/natekspencer/ha-pura/issues/120\", \"created_at\": \"2026-01-31T17:41:36Z\", \"fix_commit\": \"38b32cfb04675999cc607dea598c4c7aa9ad795f\", \"fix_pr\": 121, \"license\": \"MIT\", \"why\": \"Typical Home Assistant user report with a full traceback but a generic title; an easy calibration case for evidence and fix quality.\"}"
+}

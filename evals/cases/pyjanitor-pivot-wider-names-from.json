@@ -1,0 +1,43 @@
+{
+  "id": "pyjanitor-pivot-wider-names-from",
+  "issue": {
+    "number": 1508,
+    "title": "`pivot_wider()` requires `names_from` but the docs say it shouldn't",
+    "body": "## Brief Description\n\n<!-- Please provide a brief description of your bug. Do NOT paste the stack trace here. -->\n\nAccording to the docs, this should be allowed:\n```py\njanitor.pivot_wider(df)\n```\n\nHowever, it raises:\n```\nValueError: pivot_wider() is missing 1 required argument: 'names_from'\n```\n\n## System Information\n\n<!-- System information helps us. To keep things simple, just let us know the OS and Python version first.\nYou can provide the optional information later. -->\n\n- Operating system: Linux  <!-- delete the appropriate ones -->\n- OS details (optional): Debian 12 (Bookworm)  <!-- e.g. version, or Linux distro -->\n- Python version (required): 3.11\n\n## Minimally Reproducible Code\n\n<!-- If you provide minimal code that reproduces the problem, this makes it easier for us to debug what's going on.\n\nMinimal code should be trivially copy/pastable into a Python interpreter in its entirety. Be sure to include imports.\n-->\n\nI don't think it's important what the `df` argument is, so you can just use a null one:\n\n```py\nimport janitor\n\njanitor.pivot_wider(pd.DataFrame())\n```\n\n## Error Messages\n\n<!-- If you get an error message, please paste it between the backticks here. -->\n\n```python-traceback\nTraceback (most recent call last):\n\n  Cell In[23], line 1\n    janitor.pivot_wider(pd.DataFrame())\n\n  File ~/micromamba/envs/anaconda3_11_plus/lib/python3.11/site-packages/janitor/utils.py:335 in emit_warning\n    return func(*args, **kwargs)\n\n  File ~/micromamba/envs/anaconda3_11_plus/lib/python3.11/site-packages/janitor/functions/pivot.py:2059 in pivot_wider\n    return _computations_pivot_wider(\n\n  File ~/micromamba/envs/anaconda3_11_plus/lib/python3.11/site-packages/janitor/functions/pivot.py:2106 in _computations_pivot_wider\n    ) = _data_checks_pivot_wider(\n\n  File ~/micromamba/envs/anaconda3_11_plus/lib/python3.11/site-packages/janitor/functions/pivot.py:2250 in _data_checks_pivot_wider\n    raise ValueError(\n\nValueError: pivot_wider() is missing 1 required argument: 'names_from'\n```\n"
+  },
+  "source": {
+    "repo": "pyjanitor-devs/pyjanitor",
+    "sha": "938ed2d952177f75d8bf3f861b1aaacb6035fc7f"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "janitor/functions/pivot.py",
+        "start_line": 1865,
+        "end_line": 1873
+      },
+      {
+        "path": "janitor/functions/pivot.py",
+        "start_line": 2012,
+        "end_line": 2031
+      },
+      {
+        "path": "janitor/functions/pivot.py",
+        "start_line": 2216,
+        "end_line": 2229
+      },
+      {
+        "path": "mkdocs/api/polars.md",
+        "start_line": 9,
+        "end_line": 11
+      }
+    ],
+    "cause": "pivot_wider in janitor/functions/pivot.py declares names_from with a default of None, so the signature and API docs present it as optional, while _data_checks_pivot_wider raises when it is None; the fix makes names_from a required positional parameter."
+  },
+  "acceptance": [
+    "M3-A1",
+    "M3-A4"
+  ],
+  "notes": "{\"url\": \"https://github.com/pyjanitor-devs/pyjanitor/issues/1508\", \"created_at\": \"2025-10-09T01:49:56Z\", \"fix_commit\": \"9f05c411f97073b3be98800d9a196748b556a680\", \"fix_pr\": 1510, \"license\": \"MIT\", \"why\": \"Signature and docs say an argument is optional while the validation code requires it; the model must decide which side is wrong.\"}"
+}

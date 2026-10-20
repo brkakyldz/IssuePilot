@@ -1,0 +1,32 @@
+{
+  "id": "backslash-autocompile-reenabled",
+  "issue": {
+    "number": 32,
+    "title": "[Glitch] auto-compiler re-enables every compilation",
+    "body": "Whenever you compile your PDF without the auto-compiler on, it turns itself back on again. This means you then have to re-disable it every single time you want to compile."
+  },
+  "source": {
+    "repo": "Manan-Santoki/Backslash",
+    "sha": "8230c8c31116fb593069382133353a7178fb52b0"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "apps/web/src/components/editor/EditorLayout.tsx",
+        "start_line": 499,
+        "end_line": 505
+      },
+      {
+        "path": "apps/web/src/components/editor/EditorLayout.tsx",
+        "start_line": 661,
+        "end_line": 667
+      }
+    ],
+    "cause": "apps/web/src/components/editor/EditorLayout.tsx calls setAutoCompileEnabled(true) in both successful-build handlers, so every successful compile switches auto-compile back on."
+  },
+  "acceptance": [
+    "M3-A1"
+  ],
+  "notes": "{\"url\": \"https://github.com/Manan-Santoki/Backslash/issues/32\", \"created_at\": \"2026-04-27T16:18:15Z\", \"fix_commit\": \"04c1db071db6d98285f041b3477b59f8fe48baf6\", \"fix_pr\": 35, \"license\": \"MIT\", \"why\": \"TypeScript case: a two-sentence user report with no code pointer, where the cause is two stray state setters in one React component.\"}"
+}

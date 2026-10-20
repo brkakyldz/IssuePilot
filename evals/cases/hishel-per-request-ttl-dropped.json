@@ -1,0 +1,28 @@
+{
+  "id": "hishel-per-request-ttl-dropped",
+  "issue": {
+    "number": 444,
+    "title": "hishel_ttl not written to storage",
+    "body": "According to the [docs](https://hishel.com/dev/metadata/#hishel_ttl), an httpx request that includes `hishel_ttl` should override the storage's default ttl.\n\n```py\nresponse = client.get(\n    \"https://api.example.com/data\",\n    extensions={\"hishel_ttl\": 3600}\n)\n```\n\nBut that doesn't seem to be the case. In the example below, two requests with `hishel_ttl=999` are dispatched and the storage has `default_ttl=0` (no caching). I was expecting the second request to use the cache but both hit the server.\n\n<blockquote><details>\n<summary> example </summary>\n\n```py\nfrom hishel.httpx import SyncCacheClient\nfrom hishel import BaseFilter, SyncSqliteStorage, FilterPolicy, Request\n\n\"\"\"\nrm .cache/hishel/ttl_demo.sqlite\npkill -9 -f 'http.server 1234'\npython -m http.server 1234 &\npython test.py\n\n(one liner)\nrm .cache/hishel/ttl_demo.sqlite; pkill -9 -f 'http.server 1234'; python -m http.server 1234 & python test.py\n\n---\n\n# Server sees 2x requests but the second request should have been from cache\nServing HTTP on 0.0.0.0 port 1234 (http://0.0.0.0:1234/) ...\n127.0.0.1 - - [03/Mar/2026 13:33:10] \"GET / HTTP/1.1\" 200 -\n127.0.0.1 - - [03/Mar/2026 13:33:10] \"GET / HTTP/1.1\" 200 -\n\"\"\"\n\n\ndef main():\n    client = SyncCacheClient(\n        storage=SyncSqliteStorage(\n            database_path=\"ttl_demo.sqlite\",\n            default_ttl=0,\n        ),\n        policy=FilterPolicy(\n            request_filters=[CacheEverythingFilter()],\n            response_filters=[CacheEverythingFilter()],\n        ),\n    )\n\n    resp = client.get(\n        \"http://localhost:1234\",\n        extensions={\"hishel_ttl\": 999},\n    )\n    print(resp.extensions[\"hishel_from_cache\"])  # False\n\n    resp = client.get(\n        \"http://localhost:1234\",\n        extensions={\"hishel_ttl\": 999},\n    )\n    print(resp.extensions[\"hishel_from_cache\"])  # False\n\n\nclass CacheEverythingFilter(BaseFilter):\n    def needs_body(self) -> bool:\n        return False\n\n    def apply(self, item: Request, body: bytes | None) -> bool:\n        return True\n\n\nmain()\n```\n\n</details></blockquote>\n\nThis seems to be because `SyncSqliteStorage.create_entry()` [serializes the request / response](https://github.com/karpetrosyan/hishel/blob/31099e327035bf0e4d9265ca50124593a48eccf0/hishel/_core/_storages/_sync_sqlite.py#L141-L144) with `pack()`. And `pack()` [deletes](https://github.com/karpetrosyan/hishel/blob/31099e327035bf0e4d9265ca50124593a48eccf0/hishel/_core/_storages/_packing.py#L13) `hishel_ttl`. So `hishel_ttl` is never written to the db and when the cached request is [checked for expiry](https://github.com/karpetrosyan/hishel/blob/31099e327035bf0e4d9265ca50124593a48eccf0/hishel/_core/_storages/_sync_sqlite.py#L297) the `default_ttl` is always used.\n\nOr maybe I'm totally misreading and doing something dumb.\n"
+  },
+  "source": {
+    "repo": "karpetrosyan/hishel",
+    "sha": "31099e327035bf0e4d9265ca50124593a48eccf0"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "hishel/_core/_storages/_packing.py",
+        "start_line": 11,
+        "end_line": 17
+      }
+    ],
+    "cause": "The metadata filter in hishel/_core/_storages/_packing.py strips every request extension whose key starts with hishel_ before storing, including hishel_ttl, so the documented per-request TTL never reaches the storage and default_ttl applies."
+  },
+  "acceptance": [
+    "M3-A1",
+    "M3-A4"
+  ],
+  "notes": "{\"url\": \"https://github.com/karpetrosyan/hishel/issues/444\", \"created_at\": \"2026-03-03T18:41:53Z\", \"fix_commit\": \"f6cddcd76b713a5f7907f0fbe93d8b4cf8bbc342\", \"fix_pr\": 445, \"license\": \"BSD-3-Clause\", \"why\": \"The docs promise a per-request hishel_ttl override but the storage packing code drops it; the issue gives a reproduction but no code pointer.\"}"
+}
