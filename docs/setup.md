@@ -50,7 +50,8 @@ Set these under `with:` in your copy of the workflow.
 |---|---|---|
 | `language` | `English` | Language of the analysis. Comment labels exist in English and Turkish; other languages get English labels around the analysis. |
 | `model` | `sonnet` | Claude model alias or name. |
-| `max_turns` | `30` | Upper bound on the agent's steps. |
+| `max_tool_calls` | `40` | Upper bound on the agent's tool calls; past it the agent must answer, and ten calls later it is stopped. |
+| `max_turns` | `60` | Claude Code's own turn limit; keep it above `max_tool_calls`. |
 | `issue_number` | the opened issue | Set by the manual trigger; leave it as in the template. |
 
 Issues opened by bots are skipped. To skip one issue, add the label
@@ -64,7 +65,7 @@ The template pins `@v1`, which follows compatible releases. Pin a full tag such 
 One investigation takes about a minute of runner time and uses your subscription's
 quota like a short Claude Code session: in our measurements, the equivalent of
 US$0.08–0.14 at API list prices with Sonnet. Each run is bounded by a 15-minute job
-timeout and `max_turns`, and only one run per issue happens at a time.
+timeout and `max_tool_calls`, and only one run per issue happens at a time.
 
 ## How it keeps your repository safe
 
@@ -97,8 +98,8 @@ Wait for the limit to reset and re-run; if it persists, follow that issue.
 **"The Claude subscription's usage limit was reached."** Re-run the workflow by hand
 once the limit resets.
 
-**"The investigation hit its step limit"**. The issue was too broad for `max_turns`.
-Raise it, or narrow the issue and re-run.
+**"The investigation hit its step limit"**. The issue was too broad for the step limits.
+Raise `max_tool_calls` (and `max_turns` above it), or narrow the issue and re-run.
 
 **"Claude finished the investigation but did not return a result"**. Re-run once; if it
 repeats, open the run log's transcript artifact and report it.

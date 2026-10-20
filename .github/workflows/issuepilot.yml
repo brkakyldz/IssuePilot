@@ -27,9 +27,13 @@ on:
         type: string
         default: sonnet
       max_turns:
-        description: Upper bound on agent turns.
+        description: Claude Code's turn limit; the tool-call budget below is the real bound.
         type: number
-        default: 30
+        default: 60
+      max_tool_calls:
+        description: Hard bound on the agent's tool calls.
+        type: number
+        default: 40
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         description: The user's Claude subscription token, from `claude setup-token`.
@@ -74,6 +78,7 @@ jobs:
           language: ${{ inputs.language }}
           model: ${{ inputs.model }}
           max_turns: ${{ inputs.max_turns }}
+          max_tool_calls: ${{ inputs.max_tool_calls }}
 
       - name: Keep the transcript
         if: always() && steps.investigate.outputs.execution_file != ''
