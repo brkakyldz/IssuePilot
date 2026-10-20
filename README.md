@@ -1,8 +1,28 @@
 # IssuePilot
 
-IssuePilot is intended to be an autonomous AI agent that investigates newly opened
-GitHub issues and posts evidence-based technical analysis and solution suggestions
-directly to the original issue.
+IssuePilot is an AI agent that investigates newly opened GitHub issues and posts
+evidence-based technical analysis and solution suggestions directly to the original
+issue. It runs in GitHub Actions on the repository owner's own Claude subscription.
+
+## Use it
+
+Add one workflow file and one secret to your repository; every new issue then gets a
+comment with the likely cause, where it is, a suggested fix and what IssuePilot could
+not verify. See [docs/setup.md](docs/setup.md).
+
+```yaml
+jobs:
+  issuepilot:
+    uses: brkakyldz/IssuePilot/.github/workflows/issuepilot.yml@v1
+    permissions: {contents: read, issues: write, pull-requests: read}
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+```
+
+The full file is [templates/issuepilot.yml](templates/issuepilot.yml). How it stays
+safe with untrusted issue text: [ADR 0001](docs/decisions/0001-official-claude-code-action-with-read-only-agent-and-separate-publisher.md),
+[ADR 0002](docs/decisions/0002-confine-agent-file-access-and-scan-output-for-secrets.md).
+How its quality is measured: [evals/](evals/README.md).
 
 ## Product intent
 
