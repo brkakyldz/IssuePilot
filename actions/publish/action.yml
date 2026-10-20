@@ -18,7 +18,7 @@ inputs:
     description: The investigate action's metrics output (may be empty).
     default: ""
   investigate_result:
-    description: Result of the investigate job: success, failure or cancelled.
+    description: "Result of the investigate job: success, failure or cancelled."
     required: true
   language:
     description: Language of the comment's labels.

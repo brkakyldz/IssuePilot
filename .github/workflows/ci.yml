@@ -28,7 +28,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pip install --quiet pytest
+          python -m pip install --quiet pytest pyyaml
           python -m pytest -q
 
       - name: Lint workflows
