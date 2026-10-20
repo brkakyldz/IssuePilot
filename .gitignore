@@ -24,3 +24,9 @@ htmlcov/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Private store and local-only agent notes (not part of the product)
+.private/
+CLAUDE.local.md
+/docs/lessons/
+/reports/research/

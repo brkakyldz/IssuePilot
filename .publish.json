@@ -1,0 +1,9 @@
+{
+  "private": [
+    "docs/lessons",
+    "reports/research"
+  ],
+  "allow": [
+    "/home/runner"
+  ]
+}
