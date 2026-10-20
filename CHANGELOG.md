@@ -5,6 +5,8 @@ callers pinned to `@v1` receive every 1.x release.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-21
+
 ### Added
 - Reusable workflow `.github/workflows/issuepilot.yml` with a ten-line caller,
   `templates/issuepilot.yml`; the prompt, schema and publish code travel with the
@@ -21,5 +23,12 @@ callers pinned to `@v1` receive every 1.x release.
 - Named failure messages (sign-in, usage limit, step limit, timeout, no result).
 - Comment labels in English and Turkish (`language` input).
 - `docs/setup.md`: installation, options, cost, security model, troubleshooting.
-- Backtest harness (`evals/`, `.github/workflows/backtest.yml`) and the end-to-end
-  self-test workflow (`security/self-test.yml`).
+- The investigated repository's own Claude Code configuration (hooks, permissions,
+  MCP servers) is never loaded (ADR 0004).
+- Every run is bounded: a spend cap (`max_cost_usd`, default US$0.50), a tool-call
+  budget enforced by IssuePilot's own hook (`max_tool_calls`, default 40), the job
+  timeout, and one run per issue at a time.
+- Backtest harness (`evals/`, `.github/workflows/backtest.yml`), 16 cases and 10
+  held-out scenarios: 10/10 held-out and 13/16 real closed issues at release
+  (`docs/runs/2026-10-21_m3-investigation-quality.md`); the end-to-end self-test
+  workflow (`security/self-test.yml`).

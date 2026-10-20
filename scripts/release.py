@@ -47,7 +47,7 @@ def main(argv: list[str]) -> int:
         sys.exit("working tree is not clean")
     sh("git", "fetch", "-q", "origin", "main", "--tags")
     if sh("git", "rev-parse", "HEAD") != sh("git", "rev-parse", "origin/main"):
-        sys.exit("HEAD is not origin/main; check out main and pull first")
+        sys.exit("HEAD is not origin/main; check out (or detach at) origin/main first")
     if sh("git", "tag", "-l", tag):
         sys.exit(f"{tag} already exists")
     pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
@@ -57,6 +57,7 @@ def main(argv: list[str]) -> int:
     if subprocess.run([sys.executable, "-m", "pytest", "-q"], cwd=ROOT).returncode:
         sys.exit("tests fail")
 
+    start = sh("git", "branch", "--show-current") or sh("git", "rev-parse", "HEAD")
     sh("git", "switch", "-q", "--detach")
     workflow = pin_refs.WORKFLOW
     workflow.write_text(pin_refs.pin(workflow.read_text(encoding="utf-8"), tag), encoding="utf-8", newline="\n")
@@ -66,7 +67,7 @@ def main(argv: list[str]) -> int:
     major_exists = bool(sh("git", "ls-remote", "--tags", "origin", f"refs/tags/{major}"))
     sh("git", "tag", "-fa", major, "-m", f"IssuePilot {major} (currently {tag})")
     release_commit = sh("git", "rev-parse", "HEAD")
-    sh("git", "switch", "-q", "main")
+    sh("git", "switch", "-q", *(["--detach", start] if re.fullmatch(r"[0-9a-f]{40}", start) else [start]))
     print(f"tagged {tag} and {major} at {release_commit[:12]}")
 
     if not push:
