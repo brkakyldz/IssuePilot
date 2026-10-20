@@ -60,6 +60,10 @@ EN = {
             "The investigation hit its step limit and stopped without a result. The issue may "
             "be too broad; try again with a narrower description."
         ),
+        "budget": (
+            "The investigation reached its spending limit (`max_cost_usd`) and stopped "
+            "without a result. Raise the limit or narrow the issue, then re-run."
+        ),
         "cancelled": "The investigation hit its time limit or was cancelled by hand.",
         "no_output": "Claude finished the investigation but did not return a result in the expected form.",
         "secret_detected": (
@@ -126,6 +130,10 @@ TR = {
         "max_turns": (
             "Araştırma adım sınırına ulaştı ve sonuç üretmeden durdu. Issue çok geniş "
             "olabilir; daha dar bir tarifle yeniden deneyin."
+        ),
+        "budget": (
+            "Araştırma harcama sınırına (`max_cost_usd`) ulaştı ve sonuç üretmeden durdu. "
+            "Sınırı yükseltin ya da issue'yu daraltıp yeniden çalıştırın."
         ),
         "cancelled": "Araştırma zaman sınırına takıldı ya da elle iptal edildi.",
         "no_output": "Claude araştırmayı bitirdi ama beklenen biçimde bir sonuç vermedi.",

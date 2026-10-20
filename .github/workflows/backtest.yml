@@ -17,6 +17,9 @@ on:
       ids:
         description: Comma-separated case ids (empty = all)
         default: ""
+      max_cost_usd:
+        description: Per-run spend bound passed to the investigate action
+        default: "0.50"
 
 permissions: {}
 
@@ -108,6 +111,7 @@ jobs:
           repository: ${{ matrix.case.repo }}
           commit: ${{ matrix.case.sha }}
           language: English
+          max_cost_usd: ${{ inputs.max_cost_usd }}
 
       - name: Verify and collect the result
         if: always()

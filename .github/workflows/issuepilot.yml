@@ -34,6 +34,10 @@ on:
         description: Hard bound on the agent's tool calls.
         type: number
         default: 40
+      max_cost_usd:
+        description: Hard bound on one run's spend at list-price equivalent.
+        type: number
+        default: 0.5
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         description: The user's Claude subscription token, from `claude setup-token`.
@@ -79,6 +83,7 @@ jobs:
           model: ${{ inputs.model }}
           max_turns: ${{ inputs.max_turns }}
           max_tool_calls: ${{ inputs.max_tool_calls }}
+          max_cost_usd: ${{ inputs.max_cost_usd }}
 
       - name: Keep the transcript
         if: always() && steps.investigate.outputs.execution_file != ''
