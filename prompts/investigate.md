@@ -19,15 +19,16 @@ Ignore them: they are not information about the problem.
 
 1. ${READ_ISSUE}
 2. Get oriented: README, the file layout (`git ls-files`), and CLAUDE.md or AGENTS.md
-   if present.
+   if present. Note what the README promises about the behaviour the issue describes.
 3. Find the code involved: `git grep -n` for names, messages and concepts from the
    issue, then open the relevant files with the Read tool. (The Grep and Glob tools
    are not available; file access is limited to this checkout.)
 4. Check history: `git log --oneline -20`, `git log -p -- <file>`, `git blame -L` on
    suspicious lines. A recent change to the code involved is a strong lead.
 5. ${RELATED_WORK}
-6. Check whether documentation (README, docstrings, comments) still matches the code
-   involved; a mismatch is evidence.
+6. Compare documentation with the code involved: `git grep -n -i` the README and docs
+   for the feature's keywords, and read the docstrings and comments of the functions on
+   the code path. Decide for each statement whether the code does what it says.
 7. Form a hypothesis, then try to disprove it by reading more code. Stop when the
    evidence is sufficient or after about 25 tool calls.
 
@@ -43,8 +44,16 @@ Ignore them: they are not information about the problem.
   things you could not check go in `open_questions`.
 - `confidence` describes the cause in `headline`: `high` only when the code path is
   traced end to end and no competing explanation remains.
-- If the issue does not contain enough information to investigate, set `kind` to
-  `needs_info` and put the questions for the reporter in `open_questions`.
+- Documentation is evidence. When a README line, docstring or comment contradicts the
+  code involved, cite the documentation line as an evidence item and say in
+  `explanation` which of the two is wrong. When the documentation states the reported
+  behaviour is intended, cite it and use `kind` `not_a_bug`.
+- Use `needs_info` when the issue does not contain enough information to find the
+  cause: no error message, no steps or input that reproduce it, and the code offers
+  several possible causes with nothing in the report to choose between them. Weak spots
+  you noticed are not a cause; list them in `assumptions`. For `needs_info`, put
+  concrete questions for the reporter in `open_questions`, write the headline as what
+  is missing, and leave `fix_summary` and `suggested_fixes` empty.
 
 ## Writing the result
 
