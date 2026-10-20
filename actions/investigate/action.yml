@@ -24,6 +24,11 @@ inputs:
   max_turns:
     description: Upper bound on agent turns.
     default: "30"
+  max_tool_calls:
+    description: >-
+      Hard bound on tool calls, enforced by IssuePilot's own hook: past it tools are
+      refused and the agent is told to answer; ten calls later the session stops.
+    default: "40"
   repository:
     description: Replay only. owner/name the prompt names; defaults to this repository.
     default: ""
@@ -81,6 +86,9 @@ runs:
           echo "$delim"
           echo "schema=$(jq -c . "$root/schema/analysis.schema.json")"
           echo "tools=$tools"
+          echo "settings=$(jq -nc --arg hook "bash \"$GITHUB_ACTION_PATH/tool-budget.sh\"" \
+            '{permissions: {blockReadsOutsideWorkingDirectories: true},
+              hooks: {PreToolUse: [{matcher: "*", hooks: [{type: "command", command: $hook}]}]}}')"
         } >> "$GITHUB_OUTPUT"
 
     # A token pasted with a trailing newline or space is rejected as "Not logged in"
@@ -107,11 +115,13 @@ runs:
         # Harmless tripwire: if this value ever reaches the comment, the publish
         # step refuses to post (src/issuepilot/leaks.py).
         ISSUEPILOT_CANARY: issuepilot-canary-${{ github.run_id }}
+        ISSUEPILOT_TOOL_BUDGET: ${{ inputs.max_tool_calls }}
+        ISSUEPILOT_BUDGET_FILE: ${{ runner.temp }}/issuepilot-tool-calls
       with:
         claude_code_oauth_token: ${{ steps.token.outputs.value }}
         github_token: ${{ github.token }}
         prompt: ${{ steps.prep.outputs.prompt }}
-        settings: '{"permissions":{"blockReadsOutsideWorkingDirectories":true}}'
+        settings: ${{ steps.prep.outputs.settings }}
         claude_args: |
           --model ${{ inputs.model }}
           --max-turns ${{ inputs.max_turns }}

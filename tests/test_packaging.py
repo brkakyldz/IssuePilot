@@ -43,7 +43,7 @@ def test_agent_never_gets_write_tools_or_bare_file_tools():
     joined = ",".join(allowed)
     for tool in ["Edit", "Write", "comment", "Read,", "Grep", "Glob", "gh api"]:
         assert tool not in joined, tool
-    assert "blockReadsOutsideWorkingDirectories\":true" in INVESTIGATE
+    assert "blockReadsOutsideWorkingDirectories: true" in INVESTIGATE
 
 
 def test_jobs_keep_their_permissions():
@@ -62,9 +62,10 @@ def test_security_probe_matches_the_investigate_action():
     base = re.search(r'tools="(Bash[^"]+)"', INVESTIGATE).group(1)
     issue_tools = re.search(r'tools="\$tools,([^"]+)"', INVESTIGATE).group(1)
     assert probe_allowed == f"{base},{issue_tools}"
-    for flag in ["--disallowedTools", "blockReadsOutsideWorkingDirectories", "--setting-sources", "--strict-mcp-config"]:
+    for flag in ["--disallowedTools", "--setting-sources", "--strict-mcp-config"]:
         line = next(l for l in INVESTIGATE.splitlines() if flag in l).strip()
         assert line in probe, flag
+    assert "blockReadsOutsideWorkingDirectories" in probe
 
 
 def test_action_and_workflow_files_are_valid_yaml():
@@ -78,3 +79,31 @@ def test_the_investigated_repository_cannot_configure_the_agent():
     # own commands inside the investigate job (backtest run 39509333942, caldav).
     args = INVESTIGATE.split("claude_args: |", 1)[1]
     assert "--setting-sources user" in args and "--strict-mcp-config" in args
+
+
+def _hook(tmp_path, payload: dict, budget: int = 3) -> str:
+    import json
+    import shutil
+    import subprocess
+
+    if not shutil.which("bash") or not shutil.which("jq"):
+        pytest.skip("needs bash and jq")
+    env = {**__import__("os").environ, "ISSUEPILOT_BUDGET_FILE": str(tmp_path / "count"), "ISSUEPILOT_TOOL_BUDGET": str(budget)}
+    script = (ROOT / "actions" / "investigate" / "tool-budget.sh").as_posix()
+    return subprocess.run(["bash", script], input=json.dumps(payload), capture_output=True, text=True, env=env).stdout
+
+
+def test_tool_budget_hook_refuses_then_stops(tmp_path):
+    call = {"tool_name": "Bash", "tool_input": {"command": "git log -1"}}
+    assert [_hook(tmp_path, call) for _ in range(3)] == ["", "", ""]
+    assert '"deny"' in _hook(tmp_path, call) and "budget exhausted" in _hook(tmp_path, call)
+    for _ in range(8):
+        _hook(tmp_path, call)
+    assert '"continue":false' in _hook(tmp_path, call).replace(" ", "")
+    # The structured result is never refused, even past the budget.
+    assert _hook(tmp_path, {"tool_name": "StructuredOutput", "tool_input": {}}) == ""
+
+
+def test_tool_budget_hook_refuses_an_empty_bash_call(tmp_path):
+    out = _hook(tmp_path, {"tool_name": "Bash", "tool_input": {}}, budget=40)
+    assert '"deny"' in out and "without a command" in out
