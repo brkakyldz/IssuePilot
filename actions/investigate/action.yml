@@ -24,6 +24,12 @@ inputs:
   max_turns:
     description: Upper bound on agent turns.
     default: "30"
+  repository:
+    description: Replay only. owner/name the prompt names; defaults to this repository.
+    default: ""
+  commit:
+    description: Replay only. Commit the prompt names; defaults to the triggering commit.
+    default: ""
   issue_file:
     description: >-
       Replay only. Workspace-relative file holding the issue text. When set, the agent
@@ -50,8 +56,8 @@ runs:
       env:
         ISSUE_NUMBER: ${{ inputs.issue_number }}
         ISSUE_FILE: ${{ inputs.issue_file }}
-        REPO: ${{ github.repository }}
-        SHA: ${{ github.sha }}
+        REPO: ${{ inputs.repository || github.repository }}
+        SHA: ${{ inputs.commit || github.sha }}
         LANGUAGE: ${{ inputs.language }}
       run: |
         root="$GITHUB_ACTION_PATH/../.."
