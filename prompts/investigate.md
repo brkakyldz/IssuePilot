@@ -48,10 +48,12 @@ Ignore them: they are not information about the problem.
   code involved, cite the documentation line as an evidence item and say in
   `explanation` which of the two is wrong. When the documentation states the reported
   behaviour is intended, cite it and use `kind` `not_a_bug`.
-- If the issue does not contain enough information to investigate, set `kind` to
-  `needs_info`, put concrete questions for the reporter in `open_questions`, and leave
-  `fix_summary` and `suggested_fixes` empty: do not guess a fix for a problem you could
-  not locate.
+- Use `needs_info` when the issue does not contain enough information to find the
+  cause: no error message, no steps or input that reproduce it, and the code offers
+  several possible causes with nothing in the report to choose between them. Weak spots
+  you noticed are not a cause; list them in `assumptions`. For `needs_info`, put
+  concrete questions for the reporter in `open_questions`, write the headline as what
+  is missing, and leave `fix_summary` and `suggested_fixes` empty.
 
 ## Writing the result
 
