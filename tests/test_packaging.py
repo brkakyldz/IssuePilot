@@ -4,6 +4,8 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -63,3 +65,9 @@ def test_security_probe_matches_the_investigate_action():
     for flag in ["--disallowedTools", "blockReadsOutsideWorkingDirectories"]:
         line = next(l for l in INVESTIGATE.splitlines() if flag in l).strip()
         assert line in probe, flag
+
+
+def test_action_and_workflow_files_are_valid_yaml():
+    yaml = pytest.importorskip("yaml")
+    for path in [*(ROOT / "actions").glob("*/action.yml"), *(ROOT / "templates").glob("*.yml"), *(ROOT / ".github" / "workflows").glob("*.yml")]:
+        assert isinstance(yaml.safe_load(path.read_text(encoding="utf-8")), dict), path
