@@ -20,7 +20,7 @@ callers pinned to `@v1` receive every 1.x release.
   posting; failed citations are disclosed and lower the stated confidence.
 - Leak scan: an analysis containing a credential shape or the run's canary is not
   published and the job fails.
-- Named failure messages (sign-in, usage limit, step limit, timeout, no result).
+- Named failure messages (sign-in, usage limit, step limit, spending limit, timeout, no result).
 - Comment labels in English and Turkish (`language` input).
 - `docs/setup.md`: installation, options, cost, security model, troubleshooting.
 - The investigated repository's own Claude Code configuration (hooks, permissions,
