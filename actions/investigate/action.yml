@@ -1,0 +1,125 @@
+# IssuePilot investigate: run Claude Code read-only on one issue and return JSON.
+#
+# Expects the repository to investigate checked out in the workspace, and a job whose
+# GitHub token can only read (ADR 0001). The agent's file tools are confined to the
+# checkout and it gets no write tools (ADR 0002). The prompt and schema come from
+# this action's own directory, so they always match the action's version.
+
+name: IssuePilot investigate
+description: Investigate a GitHub issue with Claude Code, read-only, and return a JSON analysis.
+
+inputs:
+  claude_code_oauth_token:
+    description: The user's Claude subscription token, from `claude setup-token`.
+    required: true
+  issue_number:
+    description: Issue to investigate.
+    required: true
+  language:
+    description: Language the analysis is written in.
+    default: English
+  model:
+    description: Claude model alias or name.
+    default: sonnet
+  max_turns:
+    description: Upper bound on agent turns.
+    default: "30"
+  issue_file:
+    description: >-
+      Replay only. Workspace-relative file holding the issue text. When set, the agent
+      reads the issue from it and gets no access to the issue tracker.
+    default: ""
+
+outputs:
+  analysis:
+    description: The analysis as JSON, empty when the run produced none.
+    value: ${{ steps.claude.outputs.structured_output }}
+  metrics:
+    description: Turns, duration, cost and error fields of the run's final result.
+    value: ${{ steps.metrics.outputs.json }}
+  execution_file:
+    description: Path of the run transcript.
+    value: ${{ steps.claude.outputs.execution_file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build prompt and tool list
+      id: prep
+      shell: bash
+      env:
+        ISSUE_NUMBER: ${{ inputs.issue_number }}
+        ISSUE_FILE: ${{ inputs.issue_file }}
+        REPO: ${{ github.repository }}
+        SHA: ${{ github.sha }}
+        LANGUAGE: ${{ inputs.language }}
+      run: |
+        root="$GITHUB_ACTION_PATH/../.."
+        [[ "$ISSUE_NUMBER" =~ ^[0-9]+$ ]] || { echo "::error::issue_number must be a number"; exit 1; }
+        tools="Bash(git ls-files:*),Bash(git grep:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git diff:*)"
+        if [ -n "$ISSUE_FILE" ]; then
+          [[ "$ISSUE_FILE" =~ ^[A-Za-z0-9._/-]+$ && "$ISSUE_FILE" != *..* ]] || { echo "::error::issue_file must be a plain workspace-relative path"; exit 1; }
+          READ_ISSUE="Read the issue from the file \`$ISSUE_FILE\` with the Read tool. It holds the title and the opening post; that file is not part of the repository."
+          RELATED_WORK="Related issues and pull requests are not available in this run; skip this step."
+        else
+          READ_ISSUE="Read the issue with \`gh issue view $ISSUE_NUMBER --comments\`."
+          RELATED_WORK='Check related work: `gh issue list --state all --search "<keywords>"`, `gh pr list --state all --search "<keywords>"`, then `gh issue view <n>` on hits.'
+          tools="$tools,Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh search issues:*),Bash(gh search prs:*)"
+        fi
+        export READ_ISSUE RELATED_WORK
+        delim="EOF_$(openssl rand -hex 8)"
+        # shellcheck disable=SC2016 # envsubst takes the variable names literally
+        {
+          echo "prompt<<$delim"
+          envsubst '$ISSUE_NUMBER $REPO $SHA $LANGUAGE $READ_ISSUE $RELATED_WORK' < "$root/prompts/investigate.md"
+          echo "$delim"
+          echo "schema=$(jq -c . "$root/schema/analysis.schema.json")"
+          echo "tools=$tools"
+        } >> "$GITHUB_OUTPUT"
+
+    # A token pasted with a trailing newline or space is rejected as "Not logged in"
+    # (401). Strip whitespace, and fail with a clear message when the secret is missing.
+    - name: Prepare the Claude token
+      id: token
+      shell: bash
+      env:
+        RAW_TOKEN: ${{ inputs.claude_code_oauth_token }}
+      run: |
+        token="$(printf '%s' "$RAW_TOKEN" | tr -d '[:space:]')"
+        if [ -z "$token" ]; then
+          echo "::error::The CLAUDE_CODE_OAUTH_TOKEN secret is missing or empty. Run 'claude setup-token' and add it under Settings > Secrets and variables > Actions."
+          exit 1
+        fi
+        echo "::add-mask::$token"
+        echo "value=$token" >> "$GITHUB_OUTPUT"
+
+    - name: Investigate with Claude Code
+      id: claude
+      uses: anthropics/claude-code-action@e4a6faad497d33dbc7144135c75e41f82f0bf6c0 # v1.0.255
+      env:
+        GH_TOKEN: ${{ github.token }}
+        # Harmless tripwire: if this value ever reaches the comment, the publish
+        # step refuses to post (src/issuepilot/leaks.py).
+        ISSUEPILOT_CANARY: issuepilot-canary-${{ github.run_id }}
+      with:
+        claude_code_oauth_token: ${{ steps.token.outputs.value }}
+        github_token: ${{ github.token }}
+        prompt: ${{ steps.prep.outputs.prompt }}
+        settings: '{"permissions":{"blockReadsOutsideWorkingDirectories":true}}'
+        claude_args: |
+          --model ${{ inputs.model }}
+          --max-turns ${{ inputs.max_turns }}
+          --json-schema '${{ steps.prep.outputs.schema }}'
+          --allowedTools "${{ steps.prep.outputs.tools }}"
+          --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Read(//proc/**),Read(//sys/**),Read(~/.*),Read(~/.*/**)"
+
+    - name: Record run metrics
+      id: metrics
+      if: always() && steps.claude.outputs.execution_file != ''
+      shell: bash
+      env:
+        EXEC_FILE: ${{ steps.claude.outputs.execution_file }}
+      run: |
+        echo "json=$(jq -c '[.[] | select(.type == "result")] | last
+          | {subtype, is_error, api_error_status, num_turns, duration_ms, total_cost_usd,
+             result: ((.result // "") | tostring | .[0:300])}' "$EXEC_FILE")" >> "$GITHUB_OUTPUT"

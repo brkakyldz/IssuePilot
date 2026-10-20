@@ -1,0 +1,32 @@
+# IssuePilot: copy this file to .github/workflows/issuepilot.yml in your repository
+# and add your Claude token as the CLAUDE_CODE_OAUTH_TOKEN secret. See docs/setup.md
+# in brkakyldz/IssuePilot.
+
+name: IssuePilot
+
+on:
+  issues:
+    types: [opened]
+  # Run it by hand on an existing issue: Actions > IssuePilot > Run workflow.
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to investigate
+        required: true
+
+permissions: {}
+
+jobs:
+  issuepilot:
+    uses: brkakyldz/IssuePilot/.github/workflows/issuepilot.yml@v1
+    # The ceiling for IssuePilot's two jobs: the investigating job only ever gets
+    # read access; the separate publishing job, which runs no AI, writes the comment.
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    with:
+      issue_number: ${{ inputs.issue_number }}
+      language: English

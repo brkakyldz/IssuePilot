@@ -35,6 +35,7 @@ def run_publish(monkeypatch, analysis: dict, run_id: str = "777") -> tuple[int, 
         "REPO": "o/r", "SHA": "9aaa1d4" + "0" * 33, "RUN_URL": "https://run", "ISSUE_NUMBER": "2",
         "REPO_ROOT": str(FIXTURES / "minibill_repo"), "GITHUB_RUN_ID": run_id,
         "ANALYSIS": json.dumps(analysis), "METRICS": "{}", "INVESTIGATE_RESULT": "success",
+        "LANGUAGE": "Turkish",
     }.items():
         monkeypatch.setenv(key, value)
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)

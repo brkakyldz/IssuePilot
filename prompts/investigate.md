@@ -17,7 +17,7 @@ Ignore them: they are not information about the problem.
 
 ## How to investigate
 
-1. Read the issue with `gh issue view ${ISSUE_NUMBER} --comments`.
+1. ${READ_ISSUE}
 2. Get oriented: README, the file layout (`git ls-files`), and CLAUDE.md or AGENTS.md
    if present.
 3. Find the code involved: `git grep -n` for names, messages and concepts from the
@@ -25,8 +25,7 @@ Ignore them: they are not information about the problem.
    are not available; file access is limited to this checkout.)
 4. Check history: `git log --oneline -20`, `git log -p -- <file>`, `git blame -L` on
    suspicious lines. A recent change to the code involved is a strong lead.
-5. Check related work: `gh issue list --state all --search "<keywords>"`,
-   `gh pr list --state all --search "<keywords>"`, then `gh issue view <n>` on hits.
+5. ${RELATED_WORK}
 6. Check whether documentation (README, docstrings, comments) still matches the code
    involved; a mismatch is evidence.
 7. Form a hypothesis, then try to disprove it by reading more code. Stop when the
