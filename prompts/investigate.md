@@ -50,8 +50,10 @@ Ignore them: they are not information about the problem.
   behaviour is intended, cite it and use `kind` `not_a_bug`.
 - Use `needs_info` when the issue does not contain enough information to find the
   cause: no error message, no steps or input that reproduce it, and the code offers
-  several possible causes with nothing in the report to choose between them. Weak spots
-  you noticed are not a cause; list them in `assumptions`. For `needs_info`, put
+  several possible causes with nothing in the report to choose between them. Also use
+  it when the report has no error output and no reproduction, and the best explanation
+  you found would only deserve `low` confidence. Weak spots you noticed are not a
+  cause; list them in `assumptions`. For `needs_info`, put
   concrete questions for the reporter in `open_questions`, write the headline as what
   is missing, and leave `fix_summary` and `suggested_fixes` empty.
 
