@@ -83,6 +83,8 @@ jobs:
             --model sonnet
             --max-turns 30
             --allowedTools "Bash(git ls-files:*),Bash(git grep:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git diff:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh pr diff:*),Bash(gh search issues:*),Bash(gh search prs:*)"
+            --setting-sources user
+            --strict-mcp-config
             --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Read(//proc/**),Read(//sys/**),Read(~/.*),Read(~/.*/**)"
 
       - name: Summarise denials

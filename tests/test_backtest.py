@@ -108,6 +108,9 @@ def test_changed_ranges_and_test_paths():
         assert backtest.is_test_path(path), path
     for path in ["src/latest.py", "contest/x.py", "pkg/testing_utils.py"]:
         assert not backtest.is_test_path(path), path
+    assert backtest.is_changelog("CHANGES.md") and backtest.is_changelog("docs/CHANGELOG.rst")
+    assert not backtest.is_changelog("src/changes.py")  # a module named changes.py is code
+    assert not backtest.is_changelog("README.md")
 
 
 def test_every_committed_case_is_valid():
