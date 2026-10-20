@@ -33,6 +33,8 @@ def classify(investigate_result: str, metrics: dict | None) -> Failure:
         code = "usage_limit"
     elif metrics.get("subtype") == "error_max_turns":
         code = "max_turns"
+    elif metrics.get("subtype") == "error_max_budget_usd":
+        code = "budget"
     else:
         code = "no_output"
     return Failure(code)

@@ -50,6 +50,7 @@ Set these under `with:` in your copy of the workflow.
 |---|---|---|
 | `language` | `English` | Language of the analysis. Comment labels exist in English and Turkish; other languages get English labels around the analysis. |
 | `model` | `sonnet` | Claude model alias or name. |
+| `max_cost_usd` | `0.5` | Upper bound on one run's spend at list-price equivalent; Claude Code stops the run there. |
 | `max_tool_calls` | `40` | Upper bound on the agent's tool calls; past it the agent must answer, and ten calls later it is stopped. |
 | `max_turns` | `60` | Claude Code's own turn limit; keep it above `max_tool_calls`. |
 | `issue_number` | the opened issue | Set by the manual trigger; leave it as in the template. |
@@ -65,7 +66,7 @@ The template pins `@v1`, which follows compatible releases. Pin a full tag such 
 One investigation takes about a minute of runner time and uses your subscription's
 quota like a short Claude Code session: in our measurements, the equivalent of
 US$0.08–0.14 at API list prices with Sonnet. Each run is bounded by a 15-minute job
-timeout and `max_tool_calls`, and only one run per issue happens at a time.
+timeout, `max_cost_usd` (US$0.50 by default) and `max_tool_calls`, and only one run per issue happens at a time.
 
 ## How it keeps your repository safe
 

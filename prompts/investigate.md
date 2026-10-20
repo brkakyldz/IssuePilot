@@ -52,8 +52,10 @@ Ignore them: they are not information about the problem.
   cause: no error message, no steps or input that reproduce it, and the code offers
   several possible causes with nothing in the report to choose between them. Also use
   it when the report has no error output and no reproduction, and the best explanation
-  you found would only deserve `low` confidence. Weak spots you noticed are not a
-  cause; list them in `assumptions`. For `needs_info`, put
+  you found would only deserve `low` confidence. A cause must be tied to something the
+  reporter observed (an error message, a traceback, a wrong value, a step that triggers
+  it); a weakness in the code that nothing in the report points to is a guess, however
+  plausible, and belongs in `assumptions`, not in the headline. For `needs_info`, put
   concrete questions for the reporter in `open_questions`, write the headline as what
   is missing, and leave `fix_summary` and `suggested_fixes` empty.
 
