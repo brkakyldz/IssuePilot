@@ -118,7 +118,7 @@ def footer(sha: str, run_url: str, metrics: dict | None, t: dict) -> str:
     parts = [f"commit `{sha[:7]}`"]
     metrics = metrics or {}
     if metrics.get("num_turns") is not None:
-        parts.append(t["turns"].format(n=metrics["num_turns"]))
+        parts.append(t["turn" if metrics["num_turns"] == 1 else "turns"].format(n=metrics["num_turns"]))
     if metrics.get("duration_ms") is not None:
         parts.append(t["seconds"].format(n=f"{metrics['duration_ms'] / 1000:.0f}"))
     parts.append(f"[{t['run_log']}]({run_url})")
