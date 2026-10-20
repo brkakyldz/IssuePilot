@@ -110,6 +110,7 @@ def test_failure_classification():
     assert classify("failure", None).code == "not_started"
     assert classify("failure", {"api_error_status": 429}).code == "usage_limit"
     assert classify("failure", {"subtype": "error_max_turns"}).code == "max_turns"
+    assert classify("failure", {"subtype": "error_max_budget_usd"}).code == "budget"
     assert classify("failure", {"subtype": "success", "is_error": False}).code == "no_output"
 
 
@@ -126,7 +127,7 @@ def test_labels_follow_the_configured_language():
 
 def test_every_failure_has_a_message_in_every_language():
     from issuepilot.i18n import EN, TR
-    codes = {"auth", "usage_limit", "max_turns", "cancelled", "no_output", "secret_detected", "not_started"}
+    codes = {"auth", "usage_limit", "max_turns", "budget", "cancelled", "no_output", "secret_detected", "not_started"}
     assert set(EN["failures"]) == set(TR["failures"]) == codes
     assert EN.keys() == TR.keys()
     english = render_failure(classify("cancelled", None), SHA, RUN, None)

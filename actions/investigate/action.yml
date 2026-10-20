@@ -26,6 +26,12 @@ inputs:
       Claude Code's own turn limit. Kept above the tool-call budget: the action rejects
       a finished result whose turn count exceeds it (anthropics/claude-code-action#1758).
     default: "60"
+  max_cost_usd:
+    description: >-
+      Hard bound on one run's spend, at list-price equivalent, enforced by Claude Code
+      (--max-budget-usd). Tool calls with invalid input reach no hook, so this is the
+      bound that holds even when the model loops on them.
+    default: "0.50"
   max_tool_calls:
     description: >-
       Hard bound on tool calls, enforced by IssuePilot's own hook: past it tools are
@@ -66,9 +72,11 @@ runs:
         REPO: ${{ inputs.repository || github.repository }}
         SHA: ${{ inputs.commit || github.sha }}
         LANGUAGE: ${{ inputs.language }}
+        MAX_COST: ${{ inputs.max_cost_usd }}
       run: |
         root="$GITHUB_ACTION_PATH/../.."
         [[ "$ISSUE_NUMBER" =~ ^[0-9]+$ ]] || { echo "::error::issue_number must be a number"; exit 1; }
+        [[ "$MAX_COST" =~ ^[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::max_cost_usd must be a number"; exit 1; }
         tools="Bash(git ls-files:*),Bash(git grep:*),Bash(git log:*),Bash(git show:*),Bash(git blame:*),Bash(git diff:*)"
         if [ -n "$ISSUE_FILE" ]; then
           [[ "$ISSUE_FILE" =~ ^[A-Za-z0-9._/-]+$ && "$ISSUE_FILE" != *..* ]] || { echo "::error::issue_file must be a plain workspace-relative path"; exit 1; }
@@ -127,6 +135,7 @@ runs:
         claude_args: |
           --model ${{ inputs.model }}
           --max-turns ${{ inputs.max_turns }}
+          --max-budget-usd ${{ inputs.max_cost_usd }}
           --json-schema '${{ steps.prep.outputs.schema }}'
           --allowedTools "${{ steps.prep.outputs.tools }}"
           --setting-sources user
