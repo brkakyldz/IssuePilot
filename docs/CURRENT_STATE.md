@@ -9,7 +9,7 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot.
 | M1 | Smoke test in the sandbox: issue → read-only Claude run → JSON → comment | done 2026-10-16 |
 | M2 | Evidence verification, short comment, failure messages, single comment, security hardening | done 2026-10-16 |
 | M3 | Investigation quality: prompt work and backtest evals on closed issues | done 2026-10-21 (`docs/runs/2026-10-21_m3-investigation-quality.md`) |
-| M4 | Packaging as a reusable workflow, `docs/setup.md`, v1 release | release pending (#15); setup doc check on a fresh repository (#14) |
+| M4 | Packaging as a reusable workflow, `docs/setup.md`, v1 release | v1.0.0 2026-10-21; setup doc checked on a fresh repository with M5 (#14) |
 | M5 | Use on real projects | not started: install on ArchDrawer (#16), review five real analyses (#17) |
 
 ## What exists
@@ -36,15 +36,12 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot.
 | Held-out scenarios, current prompt | 10/10 (run 39515633451) |
 | Real closed issues | 13/16, location hit 82%, no overconfident analysis (run 39515672719) |
 | Cost per investigation | median $0.05–0.08 list-price equivalent, ~20 s; cap $0.50 |
-| Security probe on the pinned action | all reads outside the checkout refused (run 39503851839) |
+| Security probe with the v1 flags | all reads outside the checkout refused, Glob/Grep absent, writes refused (sandbox run 39516767563) |
 | Leak scan in a real run | blocked the canary, job failed (run 39504137493) |
 | Invalid token | named sign-in failure (run 39504203614) |
 
 ## Open
 
-- The security probe has not been re-run since `--setting-sources user`,
-  `--strict-mcp-config`, the tool-call hook and the spend cap were added; due before
-  the v1 tag.
 - Known weak spots (M3 report): intended behaviour that is not written down is called a
   bug; large modules with several code paths (caldav) can yield a wrong cause at low or
   medium confidence; densify-like vague reports are not always `needs_info`.

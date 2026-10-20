@@ -1,7 +1,7 @@
 [project]
 name = "issuepilot"
-version = "0.2.0"
-description = "Verify, render and publish a Claude Code issue analysis on GitHub"
+version = "1.0.0"
+description = "Investigate new GitHub issues with Claude Code and post a verified analysis"
 requires-python = ">=3.11"
 dependencies = []
 
