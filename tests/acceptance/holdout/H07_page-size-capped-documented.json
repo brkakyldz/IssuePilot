@@ -1,0 +1,48 @@
+{
+  "id": "H07_page-size-capped-documented",
+  "issue": {
+    "number": 77,
+    "title": "GET /items?limit=500 only returns 100 items, data is being dropped",
+    "body": "We have 340 items in the store. When I call `GET /items?limit=500` I expect all of them, but the response contains exactly 100 items. Status is 200, no error, no warning. With `limit=50` I get 50 as expected.\n\nThis looks like a serious bug because our export job silently loses 240 records. Please fix so that limit is respected."
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add item listing endpoint",
+          "files": {
+            "README.md": "# listing-api\n\nTiny in-memory API used in the SDK tutorials.\n\n## Endpoints\n\n- `GET /items` lists items.\n",
+            "api/__init__.py": "# api package\n",
+            "api/store.py": "_ITEMS = [{'id': i, 'name': 'item-%d' % i} for i in range(1, 341)]\n\n\ndef all_items():\n    return list(_ITEMS)\n",
+            "api/handlers.py": "from . import store\n\n\ndef list_items(query):\n    items = store.all_items()\n    return 200, {'items': items}\n"
+          }
+        },
+        {
+          "message": "Add limit and cursor pagination",
+          "files": {
+            "api/paginate.py": "DEFAULT_PAGE_SIZE = 20\nMAX_PAGE_SIZE = 100\n\n\ndef clamp_limit(raw):\n    if raw is None:\n        return DEFAULT_PAGE_SIZE\n    limit = int(raw)\n    return max(1, min(limit, MAX_PAGE_SIZE))\n\n\ndef paginate(items, limit, cursor=None):\n    start = int(cursor or 0)\n    page = items[start:start + limit]\n    end = start + limit\n    return {'items': page, 'next_cursor': str(end) if end < len(items) else None}\n",
+            "api/handlers.py": "from .paginate import clamp_limit, paginate\nfrom . import store\n\n\ndef list_items(query):\n    limit = clamp_limit(query.get('limit'))\n    items = store.all_items()\n    return 200, paginate(items, limit, query.get('cursor'))\n"
+          }
+        },
+        {
+          "message": "Document pagination in README",
+          "files": {
+            "README.md": "# listing-api\n\nTiny in-memory API used in the SDK tutorials.\n\n## Endpoints\n\n- `GET /items` lists items.\n\n## Pagination\n\n`GET /items` takes two optional query parameters:\n\n- `limit`: page size. Defaults to 20 and is capped at 100; larger values are silently reduced to 100.\n- `cursor`: the `next_cursor` value of the previous response.\n\nThe response contains `items` and `next_cursor`. To read every item, keep requesting with the returned `next_cursor` until it is `null`.\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "not_a_bug",
+    "locations": [
+      {"path": "api/paginate.py", "start_line": 2, "end_line": 9}
+    ],
+    "cause": "The page size is deliberately capped at MAX_PAGE_SIZE (100) as documented in the README; the response carries a next_cursor that the client must follow to get the remaining items.",
+    "must_mention": ["README", "next_cursor"],
+    "must_not_mention": [],
+    "no_fix": false
+  },
+  "acceptance": ["M3-A6", "M3-A2"],
+  "notes": "Intended, documented behaviour reported as data loss. The reporter never mentions next_cursor. A good answer says it is not a bug, cites the cap and the README, and tells the reporter to follow next_cursor. Suggesting a docs/response improvement is allowed, so no_fix is not set."
+}

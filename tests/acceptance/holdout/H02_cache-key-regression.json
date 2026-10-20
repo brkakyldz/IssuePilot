@@ -1,0 +1,56 @@
+{
+  "id": "H02_cache-key-regression",
+  "issue": {
+    "number": 118,
+    "title": "Profile card shows the wrong workspace's person after switching",
+    "body": "In the admin panel I open user 7 in the Acme workspace and see Dana Whitfield. Then I switch to Globex and open user 7 there: the card still shows Dana Whitfield with the Acme label, but Globex's user 7 is somebody else. If I wait about a minute and reload, it shows the right person.\n\nThis started when I pulled the latest main last week. The version from two weeks ago did not do this. Restarting the server also clears it.\n\nMy guess is that the TTL isn't being applied properly and entries hang around longer than they should.\n\nNode 20."
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add user service with in-memory cache",
+          "files": {
+            "README.md": "# profile-service\n\nSmall multi-tenant profile lookup used by the admin panel.\n\nUser ids are only unique inside a tenant, so every lookup takes `(tenantId, userId)`.\n",
+            "package.json": "{\n  \"name\": \"profile-service\",\n  \"version\": \"0.1.0\",\n  \"main\": \"src/index.js\",\n  \"scripts\": {\n    \"test\": \"node --test\"\n  }\n}\n",
+            "src/db.js": "const USERS = [\n  { tenant: 'acme', id: 7, display_name: 'Dana Whitfield' },\n  { tenant: 'acme', id: 8, display_name: 'Omar Haddad' },\n  { tenant: 'globex', id: 7, display_name: 'Priya Raman' },\n  { tenant: 'globex', id: 9, display_name: 'Lee Chen' },\n];\n\nasync function findUser(tenantId, userId) {\n  return USERS.find((u) => u.tenant === tenantId && u.id === userId) || null;\n}\n\nmodule.exports = { findUser };\n",
+            "src/cache.js": "'use strict';\n\nconst TTL_MS = 60000;\nconst store = new Map();\n\nfunction makeKey(tenantId, userId) {\n  return `${tenantId}:${userId}`;\n}\n\nfunction get(tenantId, userId, now = Date.now()) {\n  const entry = store.get(makeKey(tenantId, userId));\n  if (!entry || entry.expires <= now) return undefined;\n  return entry.value;\n}\n\nfunction set(tenantId, userId, value, now = Date.now()) {\n  store.set(makeKey(tenantId, userId), { value, expires: now + TTL_MS });\n}\n\nfunction clear() {\n  store.clear();\n}\n\nmodule.exports = { get, set, clear, makeKey };\n",
+            "src/userService.js": "const cache = require('./cache');\nconst db = require('./db');\n\nasync function getProfile(tenantId, userId) {\n  const cached = cache.get(tenantId, userId);\n  if (cached) return cached;\n  const row = await db.findUser(tenantId, userId);\n  if (!row) return null;\n  const profile = { id: row.id, name: row.display_name, tenant: tenantId };\n  cache.set(tenantId, userId, profile);\n  return profile;\n}\n\nmodule.exports = { getProfile };\n",
+            "test/userService.test.js": "const test = require('node:test');\nconst assert = require('node:assert');\nconst cache = require('../src/cache');\nconst { getProfile } = require('../src/userService');\n\ntest('returns the profile for a known user', async () => {\n  cache.clear();\n  const profile = await getProfile('acme', 7);\n  assert.strictEqual(profile.name, 'Dana Whitfield');\n});\n\ntest('returns null for an unknown user', async () => {\n  cache.clear();\n  assert.strictEqual(await getProfile('acme', 99), null);\n});\n"
+          }
+        },
+        {
+          "message": "Let callers pass a TTL to cache.set",
+          "files": {
+            "src/cache.js": "'use strict';\n\nconst store = new Map();\n\nfunction makeKey(tenantId, userId) {\n  return `${tenantId}:${userId}`;\n}\n\nfunction get(tenantId, userId, now = Date.now()) {\n  const entry = store.get(makeKey(tenantId, userId));\n  if (!entry || entry.expires <= now) return undefined;\n  return entry.value;\n}\n\nfunction set(tenantId, userId, value, ttlMs = 60000, now = Date.now()) {\n  store.set(makeKey(tenantId, userId), { value, expires: now + ttlMs });\n}\n\nfunction clear() {\n  store.clear();\n}\n\nmodule.exports = { get, set, clear, makeKey };\n"
+          }
+        },
+        {
+          "message": "Add index entry point and usage to README",
+          "files": {
+            "src/index.js": "module.exports = { ...require('./userService') };\n",
+            "README.md": "# profile-service\n\nSmall multi-tenant profile lookup used by the admin panel.\n\nUser ids are only unique inside a tenant, so every lookup takes `(tenantId, userId)`.\n\n## Usage\n\n    const { getProfile } = require('profile-service');\n    const profile = await getProfile('acme', 7);\n\nProfiles are cached in memory for one minute.\n"
+          }
+        },
+        {
+          "message": "Simplify cache key generation",
+          "files": {
+            "src/cache.js": "'use strict';\n\nconst store = new Map();\n\nfunction makeKey(tenantId, userId) {\n  return String(userId);\n}\n\nfunction get(tenantId, userId, now = Date.now()) {\n  const entry = store.get(makeKey(tenantId, userId));\n  if (!entry || entry.expires <= now) return undefined;\n  return entry.value;\n}\n\nfunction set(tenantId, userId, value, ttlMs = 60000, now = Date.now()) {\n  store.set(makeKey(tenantId, userId), { value, expires: now + ttlMs });\n}\n\nfunction clear() {\n  store.clear();\n}\n\nmodule.exports = { get, set, clear, makeKey };\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {"path": "src/cache.js", "start_line": 5, "end_line": 7}
+    ],
+    "cause": "The commit 'Simplify cache key generation' changed makeKey in src/cache.js to ignore tenantId, so cached profiles of different tenants with the same user id collide until the TTL expires.",
+    "must_mention": [],
+    "must_not_mention": [],
+    "no_fix": false
+  },
+  "acceptance": ["M3-A1", "M3-A2"],
+  "notes": "Regression from the last commit; symptom in userService.getProfile, cause in cache.js (different file). Reporter's TTL guess is wrong. A strong answer cites the introducing commit via git history."
+}

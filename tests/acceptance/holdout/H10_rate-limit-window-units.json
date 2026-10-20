@@ -1,0 +1,56 @@
+{
+  "id": "H10_rate-limit-window-units",
+  "issue": {
+    "number": 205,
+    "title": "Rate limiter never returns 429",
+    "body": "We set the limit to 100 requests per minute. I fired 500 requests in about ten seconds with a curl loop from one machine and every one of them got 200. The `X-RateLimit-Remaining` header is always somewhere around 97 to 99 and never counts down.\n\nWe run behind nginx, so my guess is that `req.ip` is the proxy's address and requests get spread over keys, or that the counter store isn't shared. I haven't checked our nginx config yet.\n\nThis used to work when we first deployed it a few weeks ago. Node 20, no env vars set for the limiter."
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add fixed-window rate limiter",
+          "files": {
+            "README.md": "# ratelimit\n\nFixed-window rate limiter for HTTP services.\n\nEach client key gets `limit` requests per window. Defaults: 100 requests per 60 seconds.\n",
+            "package.json": "{\n  \"name\": \"ratelimit\",\n  \"version\": \"0.1.0\",\n  \"main\": \"src/middleware.js\",\n  \"scripts\": {\n    \"test\": \"node --test\"\n  }\n}\n",
+            "src/config.js": "module.exports = {\n  limit: 100,\n};\n",
+            "src/store.js": "'use strict';\n\nconst entries = new Map();\n\nmodule.exports = {\n  get: (key) => entries.get(key),\n  set: (key, entry) => entries.set(key, entry),\n};\n",
+            "src/limiter.js": "'use strict';\n\nconst config = require('./config');\nconst store = require('./store');\n\nconst WINDOW_MS = 60000;\n\nfunction check(key, now = Date.now()) {\n  let entry = store.get(key);\n  if (!entry || now - entry.windowStart > WINDOW_MS) {\n    entry = { windowStart: now, count: 0 };\n  }\n  entry.count += 1;\n  store.set(key, entry);\n  return {\n    allowed: entry.count <= config.limit,\n    remaining: Math.max(0, config.limit - entry.count),\n    resetsAt: entry.windowStart + WINDOW_MS,\n  };\n}\n\nmodule.exports = { check };\n",
+            "test/limiter.test.js": "const test = require('node:test');\nconst assert = require('node:assert');\nconst limiter = require('../src/limiter');\n\ntest('blocks after the limit within one window', () => {\n  const now = 1000;\n  for (let i = 0; i < 100; i++) limiter.check('a', now);\n  assert.strictEqual(limiter.check('a', now).allowed, false);\n});\n\ntest('allows again in the next window', () => {\n  const result = limiter.check('a', 1000 + 61000);\n  assert.strictEqual(result.allowed, true);\n});\n"
+          }
+        },
+        {
+          "message": "Add HTTP middleware that answers 429",
+          "files": {
+            "src/middleware.js": "'use strict';\n\nconst limiter = require('./limiter');\n\nfunction rateLimit(req, res, next) {\n  const result = limiter.check(req.ip);\n  res.setHeader('X-RateLimit-Remaining', String(result.remaining));\n  if (!result.allowed) {\n    res.statusCode = 429;\n    res.setHeader('Retry-After', String(Math.ceil((result.resetsAt - Date.now()) / 1000)));\n    res.end('Too many requests');\n    return;\n  }\n  next();\n}\n\nmodule.exports = { rateLimit };\n"
+          }
+        },
+        {
+          "message": "Make limit and window configurable via env",
+          "files": {
+            "src/config.js": "module.exports = {\n  limit: Number(process.env.RATE_LIMIT) || 100,\n  windowSeconds: Number(process.env.RATE_WINDOW_SECONDS) || 60,\n};\n",
+            "src/limiter.js": "'use strict';\n\nconst config = require('./config');\nconst store = require('./store');\n\nfunction check(key, now = Date.now()) {\n  let entry = store.get(key);\n  if (!entry || now - entry.windowStart > config.windowSeconds) {\n    entry = { windowStart: now, count: 0 };\n  }\n  entry.count += 1;\n  store.set(key, entry);\n  return {\n    allowed: entry.count <= config.limit,\n    remaining: Math.max(0, config.limit - entry.count),\n    resetsAt: entry.windowStart + config.windowSeconds * 1000,\n  };\n}\n\nmodule.exports = { check };\n"
+          }
+        },
+        {
+          "message": "Document RATE_LIMIT and RATE_WINDOW_SECONDS",
+          "files": {
+            "README.md": "# ratelimit\n\nFixed-window rate limiter for HTTP services.\n\nEach client key gets `limit` requests per window. Defaults: 100 requests per 60 seconds.\n\n## Configuration\n\n- `RATE_LIMIT`: requests allowed per window (default 100)\n- `RATE_WINDOW_SECONDS`: window length in seconds (default 60)\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {"path": "src/limiter.js", "start_line": 8, "end_line": 10}
+    ],
+    "cause": "After the window became configurable in seconds, limiter.js compares the elapsed milliseconds with config.windowSeconds (60) instead of 60000, so the window resets after 60 ms and the counter almost never reaches the limit.",
+    "must_mention": [],
+    "must_not_mention": [],
+    "no_fix": false
+  },
+  "acceptance": ["M3-A1", "M3-A2"],
+  "notes": "Regression from commit 3 (Make limit and window configurable via env), a unit mismatch (ms vs seconds). Reporter blames nginx/req.ip and shared store (wrong). The unit tests pass because they use a fixed 'now'. Reporter's remark that it used to work is a true hint toward history."
+}
