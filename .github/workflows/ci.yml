@@ -36,4 +36,4 @@ jobs:
           ACTIONLINT_VERSION: 1.7.12
         run: |
           bash <(curl -sSfL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "$ACTIONLINT_VERSION"
-          ./actionlint -color $(git ls-files '*.yml' '*.yaml' | grep -E '(^|/)(workflow|workflows|security)/')
+          git ls-files -z '.github/workflows/*.yml' 'workflow/*.yml' 'security/*.yml' 'templates/*.yml' | xargs -0 ./actionlint

@@ -57,6 +57,7 @@ jobs:
           SHA: ${{ github.sha }}
           LANGUAGE: Turkish
         run: |
+          # shellcheck disable=SC2016 # envsubst takes the variable names literally
           delim="EOF_$(openssl rand -hex 8)"
           {
             echo "prompt<<$delim"
