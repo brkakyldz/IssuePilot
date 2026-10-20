@@ -47,6 +47,8 @@ the user's subscription quota (Sonnet).
   builder) are not written yet; due before M3's evals are treated as acceptance.
 - The leak scan has only fired in tests, never in a real run: the attack model
   refused before reaching it.
-- Upstream risk: anthropics/claude-code-action#1614 reports genuine 401s with valid
-  setup tokens since August. Not our cause (ours was a pasted trailing newline, now
-  stripped by the workflow), but a risk to the subscription-only premise.
+- Upstream risk: anthropics/claude-code-action#1614, still open on 2026-10-21 (last
+  report 2026-09-11, Claude Code 2.1.268), reports genuine 401s with valid setup tokens;
+  some reporters' 401s were usage-limit 429s in disguise. Not our cause (ours was a
+  pasted trailing newline, now stripped). A bad token now yields the named sign-in
+  failure (sandbox run 39504203614), and `docs/setup.md` covers both upstream causes.

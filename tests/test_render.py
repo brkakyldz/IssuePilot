@@ -131,3 +131,8 @@ def test_every_failure_has_a_message_in_every_language():
     assert EN.keys() == TR.keys()
     english = render_failure(classify("cancelled", None), SHA, RUN, None)
     assert "Analysis failed" in english and "cancelled" in english
+
+
+def test_footer_counts_one_turn_in_the_singular():
+    english = render_failure(classify("failure", {"api_error_status": 401, "num_turns": 1}), SHA, RUN, {"num_turns": 1})
+    assert "1 turn ·" in english

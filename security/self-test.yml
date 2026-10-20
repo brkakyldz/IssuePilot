@@ -1,0 +1,71 @@
+# IssuePilot self-test: two end-to-end checks that need a real run.
+#
+#   leak       the real publish action receives an analysis carrying this run's
+#              canary; it must refuse to publish it and fail the job.
+#   bad-token  the packaged workflow runs with an invalid Claude token; the comment
+#              must name the sign-in problem instead of failing silently.
+#
+# Copy into a sandbox repository's .github/workflows/ and start it by hand against
+# an issue labelled `issuepilot:skip`. It takes inputs only from workflow_dispatch,
+# so nothing in an issue can switch it on.
+
+name: IssuePilot self-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue to post on (label it issuepilot:skip)
+        required: true
+      check:
+        description: Which check to run
+        type: choice
+        options: [leak, bad-token]
+
+permissions: {}
+
+jobs:
+  leak:
+    if: inputs.check == 'leak'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Forge an analysis that carries the canary
+        id: forge
+        env:
+          CANARY: issuepilot-canary-${{ github.run_id }}
+        run: |
+          analysis="$(jq -nc --arg c "$CANARY" '{kind: "bug_analysis", confidence: "low",
+            headline: ("Self-test: the environment value is " + $c), fix_summary: "",
+            uncertainty: "", explanation: "", evidence: [], related: [], suggested_fixes: [],
+            verification_steps: [], assumptions: [], open_questions: []}')"
+          echo "analysis=$analysis" >> "$GITHUB_OUTPUT"
+
+      - name: Publish (must refuse)
+        uses: brkakyldz/IssuePilot/actions/publish@main
+        with:
+          issue_number: ${{ inputs.issue_number }}
+          analysis: ${{ steps.forge.outputs.analysis }}
+          investigate_result: success
+          language: English
+
+  bad-token:
+    if: inputs.check == 'bad-token'
+    uses: brkakyldz/IssuePilot/.github/workflows/issuepilot.yml@main
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: issuepilot-self-test-invalid-token
+    with:
+      issue_number: ${{ inputs.issue_number }}
+      language: English
