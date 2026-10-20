@@ -62,7 +62,7 @@ def test_security_probe_matches_the_investigate_action():
     base = re.search(r'tools="(Bash[^"]+)"', INVESTIGATE).group(1)
     issue_tools = re.search(r'tools="\$tools,([^"]+)"', INVESTIGATE).group(1)
     assert probe_allowed == f"{base},{issue_tools}"
-    for flag in ["--disallowedTools", "blockReadsOutsideWorkingDirectories"]:
+    for flag in ["--disallowedTools", "blockReadsOutsideWorkingDirectories", "--setting-sources", "--strict-mcp-config"]:
         line = next(l for l in INVESTIGATE.splitlines() if flag in l).strip()
         assert line in probe, flag
 
@@ -71,3 +71,10 @@ def test_action_and_workflow_files_are_valid_yaml():
     yaml = pytest.importorskip("yaml")
     for path in [*(ROOT / "actions").glob("*/action.yml"), *(ROOT / "templates").glob("*.yml"), *(ROOT / ".github" / "workflows").glob("*.yml")]:
         assert isinstance(yaml.safe_load(path.read_text(encoding="utf-8")), dict), path
+
+
+def test_the_investigated_repository_cannot_configure_the_agent():
+    # A repository's .claude/settings.json hooks and .mcp.json servers would run its
+    # own commands inside the investigate job (backtest run 39509333942, caldav).
+    args = INVESTIGATE.split("claude_args: |", 1)[1]
+    assert "--setting-sources user" in args and "--strict-mcp-config" in args

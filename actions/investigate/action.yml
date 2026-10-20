@@ -117,6 +117,8 @@ runs:
           --max-turns ${{ inputs.max_turns }}
           --json-schema '${{ steps.prep.outputs.schema }}'
           --allowedTools "${{ steps.prep.outputs.tools }}"
+          --setting-sources user
+          --strict-mcp-config
           --disallowedTools "Edit,Write,MultiEdit,NotebookEdit,WebFetch,WebSearch,Read(//proc/**),Read(//sys/**),Read(~/.*),Read(~/.*/**)"
 
     - name: Record run metrics
