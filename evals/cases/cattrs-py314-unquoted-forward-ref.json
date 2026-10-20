@@ -1,0 +1,42 @@
+{
+  "id": "cattrs-py314-unquoted-forward-ref",
+  "issue": {
+    "number": 740,
+    "title": "Unquoted forward references in 3.14 don't work",
+    "body": "Minimal reproduction:\n\n```py\n# /// script\n# requires-python = \">=3.14\"\n# dependencies = [\n#     \"attrs>=26.1.0\",\n#     \"cattrs>=26.1.0\",\n# ]\n# ///\n\nfrom attrs import define\nfrom cattrs import structure, unstructure\n\n\n@define\nclass A:\n    a: A | None\n\n\nv = A(None)\nprint(v)\nprint(unstructure(v))\nprint(structure(unstructure(v), A))\n```\n\n<details>\n<summary>Output:</summary>\n\n```py\nA(a=None)\n{'a': None}\nTraceback (most recent call last):\n  File \"/tmp/asdf/a.py\", line 21, in <module>\n    print(structure(unstructure(v), A))\n          ~~~~~~~~~^^^^^^^^^^^^^^^^^^^\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/converters.py\", line 591, in structure\n    return self._structure_func.dispatch(cl)(obj, cl)\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/dispatch.py\", line 133, in dispatch_without_caching\n    res = self._function_dispatch.dispatch(typ)\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/dispatch.py\", line 76, in dispatch\n    return handler(typ)\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/converters.py\", line 1314, in gen_structure_attrs_fromdict\n    return make_dict_structure_fn(\n        cl,\n    ...<5 lines>...\n        **attrib_overrides,\n    )\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/gen/__init__.py\", line 831, in make_dict_structure_fn\n    return make_dict_structure_fn_from_attrs(\n        attrs,\n    ...<9 lines>...\n        **kwargs,\n    )\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/gen/__init__.py\", line 450, in make_dict_structure_fn_from_attrs\n    handler = find_structure_handler(\n        a, t, converter, _cattrs_prefer_attrib_converters\n    )\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/gen/_shared.py\", line 74, in find_structure_handler\n    handler = c.get_structure_hook(type, cache_result=False)\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/converters.py\", line 609, in get_structure_hook\n    else self._structure_func.dispatch_without_caching(type)\n         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/dispatch.py\", line 134, in dispatch_without_caching\n    return res if res is not None else self._fallback_factory(typ)\n                                       ~~~~~~~~~~~~~~~~~~~~~~^^^^^\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/converters.py\", line 1062, in <lambda>\n    structure_fallback_factory: HookFactory[StructureHook] = lambda t: raise_error(\n                                                                       ~~~~~~~~~~~^\n        None, t\n        ^^^^^^^\n    ),\n    ^\n  File \"/home/_/.cache/uv/environments-v2/a-9e6cd7d0ec75859d/lib/python3.14/site-packages/cattrs/fns.py\", line 22, in raise_error\n    raise StructureHandlerNotFoundError(msg, type_=cl)\ncattrs.errors.StructureHandlerNotFoundError: Unsupported type: ForwardRef('A | None', is_class=True, owner=<class '__main__.A'>). Register a structure hook for it.\n```\n</details>\n\nOne workaround is to put quotes around `A | None`.\n\nInterestingly, the unquoted version does work in 3.13 with `from __future__ import annotations`."
+  },
+  "source": {
+    "repo": "python-attrs/cattrs",
+    "sha": "3779c75beb8c2eb00bb62db3ea34330b72b35f35"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/cattrs/converters.py",
+        "start_line": 15,
+        "end_line": 20
+      },
+      {
+        "path": "src/cattrs/converters.py",
+        "start_line": 897,
+        "end_line": 902
+      },
+      {
+        "path": "src/cattrs/converters.py",
+        "start_line": 1171,
+        "end_line": 1176
+      },
+      {
+        "path": "src/cattrs/converters.py",
+        "start_line": 1189,
+        "end_line": 1194
+      }
+    ],
+    "cause": "On Python 3.14 an unquoted self-reference in an attrs field type becomes an annotationlib.ForwardRef, which src/cattrs/converters.py did not handle (no structure/unstructure hook factory evaluating it, and _structure_optional assumed a real Union), so structuring fails."
+  },
+  "acceptance": [
+    "M3-A1"
+  ],
+  "notes": "{\"url\": \"https://github.com/python-attrs/cattrs/issues/740\", \"created_at\": \"2026-03-31T21:12:49Z\", \"fix_commit\": \"e1ad8cd9528eea8e1d7c049edc4421515bf8a9f1\", \"fix_pr\": 741, \"license\": \"MIT\", \"why\": \"Minimal reproducer plus traceback; the cause needs knowledge of 3.14 deferred annotations and the converter dispatch, not just the stack.\"}"
+}

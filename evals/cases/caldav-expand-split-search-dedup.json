@@ -1,0 +1,42 @@
+{
+  "id": "caldav-expand-split-search-dedup",
+  "issue": {
+    "number": 722,
+    "title": "v3.3.0 broke expand=True",
+    "body": "While trying to figure out our sudden broken OCSP because of caldav depending on niquests (https://github.com/jawah/niquests/issues/475) I updated caldav and ran into an independent issue. For us v3.3.0 and newer broke the `expand=True`. I was following the \"reoccuring events\" issues here and once had expand='client' but then we had to change to `expand=True`. However, `expand=True` is broken in v3.3.0 but still working in v3.2.1. It simply looks to me that expansion doesn't happen at all, the first calendar entry is there (master), then nothing. I couldn't find any documentation around that here. I asked the large lying machines for help and it sent my 10 wrong directions, then suddenly: compatibility_workarounds=False.\n\nSo the only way to make the entire thing work again was to do multiple things at once: add `compatibility_workarounds=False` as a flag for calendar.search, pin version to 3.3.1a0 at the same time and then tell all my tech users to manually do a `pip uninstall qh3` (good luck trying to specify that uninstall in a pyproject.toml!).\n\nThat was a very painful experience. Feel free to close this issue, but I just wanted the next poor bastard to be a little more lucky with his search."
+  },
+  "source": {
+    "repo": "python-caldav/caldav",
+    "sha": "a6b50176677a2e81c2d7aa3d2737e1288b2a8c0c"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "caldav/search.py",
+        "start_line": 235,
+        "end_line": 253
+      },
+      {
+        "path": "caldav/search.py",
+        "start_line": 760,
+        "end_line": 766
+      },
+      {
+        "path": "caldav/search.py",
+        "start_line": 1062,
+        "end_line": 1068
+      },
+      {
+        "path": "caldav/search.py",
+        "start_line": 1162,
+        "end_line": 1168
+      }
+    ],
+    "cause": "Since v3.3.0 a search without a component type is split into one query per component type in caldav/search.py, and the merged results are deduplicated by URL only, which collapses all expanded occurrences of a recurring event (they share one URL) into the first; the fix deduplicates on URL plus RECURRENCE-ID."
+  },
+  "acceptance": [
+    "M3-A1"
+  ],
+  "notes": "{\"url\": \"https://github.com/python-caldav/caldav/issues/722\", \"created_at\": \"2026-09-30T22:08:25Z\", \"fix_commit\": \"5d4feff6f993c440cda24870534c58f83965fd36\", \"fix_pr\": 723, \"license\": \"Apache-2.0\", \"why\": \"Regression report that only describes the symptom (expand=True stops expanding after 3.3.0); the cause has to be found in the split-search merge logic.\"}"
+}

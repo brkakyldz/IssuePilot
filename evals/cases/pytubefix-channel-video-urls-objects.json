@@ -1,0 +1,28 @@
+{
+  "id": "pytubefix-channel-video-urls-objects",
+  "issue": {
+    "number": 627,
+    "title": "[BUG] ```Channel.video_urls``` returns ```YouTube``` objects instead of strings",
+    "body": "## 🐞 **Bug Description**  \nAccording to the [documentation](https://pytubefix.readthedocs.io/en/latest/api.html#pytubefix.contrib.channel.Channel.video_urls) the ```Channel.video_urls``` method should return a list of strings, but instead it returns a list of ```YouTube``` objects: \n\n```\n[[], <pytubefix.__main__.YouTube object: videoId=WzqL89hb25w>, <pytubefix.__main__.YouTube object: videoId=es5ThfPNokI>, <pytubefix.__main__.YouTube object: videoId=CWTHgahgStQ>, ...]\n```\n\n---\n\n## 🔢 **Code Snippet**    \n\n```python\nfrom pytubefix import Channel\n\nc = Channel(\"https://www.youtube.com/@YouTube\")\n\nprint(c.video_urls)\n```\n\n---\n\n## 🎯 **Expected Behavior**  \n\n> property video_urls: DeferredGeneratorList\n> Complete links of all the videos in playlist\n> Return type: List[str]\n> Returns: List of video URLs\n\n---\n\n## 📸 **Screenshots or Logs**  \n\n---\n\n## 🖥️ **Environment Details**  \nFill in the details below about your setup:  \n- **Operating System:** Windows 11 \n- **Python Version:** 3.12.10  \n- **Pytubefix Version:** 10.6.1  \n\n---\n\n## 📋 **Additional Context**  \nAdd any additional information or context that might help us resolve the issue.  \n\n---\n### 🚀 **Next Steps**  \nOnce submitted, we will triage the issue. Make sure to respond to follow-up questions to keep the process smooth.\n"
+  },
+  "source": {
+    "repo": "JuanBindez/pytubefix",
+    "sha": "a9a071d7cbf49c4b9bed33834ddf9cff996689a4"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "pytubefix/contrib/channel.py",
+        "start_line": 217,
+        "end_line": 229
+      }
+    ],
+    "cause": "Channel.url_generator in pytubefix/contrib/channel.py yields the raw extracted objects (YouTube instances and nested lists) instead of watch URLs, contradicting the documented List[str] return type of video_urls."
+  },
+  "acceptance": [
+    "M3-A1",
+    "M3-A4"
+  ],
+  "notes": "{\"url\": \"https://github.com/JuanBindez/pytubefix/issues/627\", \"created_at\": \"2026-05-10T20:29:02Z\", \"fix_commit\": \"5fa1e82b478ee972f6c5928641d1dc84f3762117\", \"fix_pr\": 630, \"license\": \"MIT\", \"why\": \"The API docs say video_urls returns strings but the code returns YouTube objects; one-file fix, and the issue does not point at the code.\"}"
+}

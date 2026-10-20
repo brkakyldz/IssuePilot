@@ -1,0 +1,42 @@
+{
+  "id": "maspsx-mflo-jump-nop-label",
+  "issue": {
+    "number": 148,
+    "title": "mflo/mfhi hazard nop placed after label when the intervening instruction is j",
+    "body": "When a single instruction separates mflo/mfhi from a mult/div, and that instruction is a branch, maspsx correctly puts the hazard nop in the branch delay slot, before any following label. For j, it puts the nop after the label instead:\n\nExpected (ASPSX):  `mflo; j $L_end; nop; $L_div: divu`\nActual (maspsx):  `mflo; j $L_end; $L_div: nop; divu`\n\nThe instructions are identical, but $L_div marks the nop. In a switch, the jump-table entry for a case starting with divu then points one instruction early. Found in Final Fantasy VII, in a switch where a case ending in mflo; j is immediately followed in memory by a case starting with divu.\n\nScratches (same C, gcc 2.7.2, ASPSX 2.56):\n - (correct) [aspsx](https://decomp.me/scratch/l0N43) (PsyQ 4.0, real ASPSX)\n - (incorrect) [maspsx](https://decomp.me/scratch/Hi7fQ) --aspsx-version=2.56\n\nFF7 uses 2.34. maspsx produces the same incorrect output there, and real ASPSX 2.34 places the nop before the label. I checked this with a minimal case under dosemu2, which I can add as an aspsx/ fixture.\n\nI have a fix and tests ready to open as a PR."
+  },
+  "source": {
+    "repo": "mkst/maspsx",
+    "sha": "7686f845a181700534c83c0419183e38aeb3e49c"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "aspsx/case_model.py",
+        "start_line": 7,
+        "end_line": 13
+      },
+      {
+        "path": "aspsx/check_environment.py",
+        "start_line": 10,
+        "end_line": 16
+      },
+      {
+        "path": "aspsx/util.py",
+        "start_line": 9,
+        "end_line": 15
+      },
+      {
+        "path": "maspsx/__init__.py",
+        "start_line": 863,
+        "end_line": 869
+      }
+    ],
+    "cause": "_handle_mflo_mfhi in maspsx/__init__.py only emits the hazard nop before the following label (in the delay slot) when the single intervening instruction is in branch_mnemonics; jump mnemonics such as j were not included, so for j the nop lands after the label."
+  },
+  "acceptance": [
+    "M3-A1"
+  ],
+  "notes": "{\"url\": \"https://github.com/mkst/maspsx/issues/148\", \"created_at\": \"2026-09-30T22:29:07Z\", \"fix_commit\": \"423ffc6bca05e53f9b7ab06159d0cbe71111bc90\", \"fix_pr\": 149, \"license\": \"MIT\", \"why\": \"Small non-web codebase with a precise expected-vs-actual assembly report and no pointer to the code; the fix is a one-line condition change.\"}"
+}

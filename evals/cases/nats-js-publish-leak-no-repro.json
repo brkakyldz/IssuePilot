@@ -1,0 +1,20 @@
+{
+  "id": "nats-js-publish-leak-no-repro",
+  "issue": {
+    "number": 793,
+    "title": "Memory leak when using JetstreamContext.publish()",
+    "body": "### Observed behavior\n\nJetstreamContext's .publish() creates a very visible and easily reproducible memory leak.\nWe accidentally used it instead of the `Client`.\nSwitched over to `Client`'s .publish, suddenly the memory leak is gone and publishing a message is a lot faster.\n\n### Expected behavior\n\nClient's .publish() and JetstreamContext's .publish() to behave the same way.\n\n### Server and client version\n\n2.12.0\n\n### Host environment\n\n_No response_\n\n### Steps to reproduce\n\n_No response_"
+  },
+  "source": {
+    "repo": "nats-io/nats.py",
+    "sha": "cab67df67dc4f32a19a6771c539a192fc50df783"
+  },
+  "expected": {
+    "kind": "needs_info",
+    "no_fix": true
+  },
+  "acceptance": [
+    "M3-A3"
+  ],
+  "notes": "{\"url\": \"https://github.com/nats-io/nats.py/issues/793\", \"created_at\": \"2025-12-12T22:10:06Z\", \"fix_commit\": null, \"fix_pr\": null, \"license\": \"Apache-2.0\", \"why\": \"Claims a 'very visible' memory leak with empty reproduction steps and host environment; the right output is a request for a reproduction script.\"}"
+}

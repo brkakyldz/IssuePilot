@@ -404,6 +404,10 @@ def is_test_path(path: str) -> bool:
     return bool(re.search(r"(^|/)(tests?|__tests__|spec)/|(^|/)test_[^/]*$|_test\.[a-z]+$|\.(test|spec)\.[a-z]+$", lowered))
 
 
+def is_changelog(path: str) -> bool:
+    return bool(re.fullmatch(r"(changes|changelog|history|news)(\.(md|rst|txt))?", Path(path).name.lower()))
+
+
 def fetch_case(args) -> int:
     issue = json.loads(gh("api", f"repos/{args.repo}/issues/{args.issue}"))
     expected: dict = {"kind": args.kind}
@@ -411,7 +415,7 @@ def fetch_case(args) -> int:
         compare = json.loads(gh("api", f"repos/{args.repo}/compare/{args.pre}...{args.fix}"))
         locations = []
         for f in compare.get("files", []):
-            if f.get("status") == "added" or is_test_path(f["filename"]) or not f.get("patch"):
+            if f.get("status") == "added" or is_test_path(f["filename"]) or is_changelog(f["filename"]) or not f.get("patch"):
                 continue
             locations += [{"path": f["filename"], "start_line": a, "end_line": b} for a, b in changed_ranges(f["patch"])]
         expected["locations"] = locations
