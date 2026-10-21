@@ -3,7 +3,7 @@ project_id: issuepilot
 implementation_agent: claude-code
 branch: main
 as_of: eb1f864
-active_milestone: M5
+active_milestone: none
 active_run: none
 ---
 # Current state
@@ -18,7 +18,7 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
 | M2 Verified, hardened investigation | PASS | sandbox runs 38836764621, 38935153786 | 61d8610 |
 | M3 Investigation quality | PASS | `docs/runs/2026-10-21_m3-investigation-quality.md` | bccdd8d |
 | M4 Packaging and v1 | PASS | release v1.0.0; `docs/runs/2026-10-21_m3-to-m5.md` | 64a6cef |
-| M5 Real use | IN_PROGRESS | installed on brkakyldz/ArchDrawer; first run on #31; v1.1.0 recognises feature requests (#34) | eb1f864 |
+| M5 Real use | PASS | `docs/runs/2026-10-21_m5-real-use.md` | m5/archdrawer-defects |
 
 ## What exists
 
@@ -31,7 +31,7 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
   needs_info, not_a_bug, feature_request).
 - `src/issuepilot/`: verify, render (English and Turkish), failure, leaks, github,
   check.
-- `evals/` with 18 cases, `tests/acceptance/holdout/` with 10 locked scenarios,
+- `evals/` with 23 cases (5 are genuine ArchDrawer defects), `tests/acceptance/holdout/` with 10 locked scenarios,
   `.github/workflows/backtest.yml`; CI runs pytest and actionlint.
 - `security/`: capability probe, injection issue, end-to-end self-test.
 - Releases v1.0.0 and v1.1.0. Sandbox `brkakyldz/issuepilot-sandbox` calls `@main`
@@ -49,10 +49,11 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
 
 ## Blockers
 
-- BLOCKED(external): #17 needs five real problem reports in ArchDrawer; every open issue
-  there today is a feature spec or an epic.
+None.
 
 ## Next
 
-Review IssuePilot's comments on the next problem reports opened in ArchDrawer (#17);
-known weak spots are in the M3 report.
+Release the unreleased changes (partial-line quotes, read-only footer) as v1.2.0 and
+move `v1`; then read IssuePilot's comments on the next problem reports opened in
+ArchDrawer. Known weak spots are in the M3 report; six genuine ArchDrawer defects are
+listed in the M5 report.

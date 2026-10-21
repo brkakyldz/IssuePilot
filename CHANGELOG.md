@@ -5,6 +5,14 @@ callers pinned to `@v1` receive every 1.x release.
 
 ## [Unreleased]
 
+### Fixed
+- A cited quote that cuts a long line short (at least 12 characters, verbatim) now
+  counts as found; such citations were set aside and lowered the stated confidence.
+
+### Changed
+- The comment footer says the analysis is read-only and the code was not run; the
+  "not sure about" line names the specific open point instead.
+
 ## [1.1.0] - 2026-10-21
 
 ### Added
