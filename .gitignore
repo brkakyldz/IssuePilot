@@ -32,4 +32,4 @@ CLAUDE.local.md
 /reports/research/
 
 # Local backtest output
-.backtest-holdout/
+.backtest-*/

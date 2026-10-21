@@ -4,6 +4,9 @@
     "reports/research"
   ],
   "allow": [
-    "/home/runner"
+    "/home/runner",
+    "A:\\\\n    a: A",
+    "f:\\\\n        result = f\\.s",
+    "/hom[e]/_/\\.cache/uv/"
   ]
 }
