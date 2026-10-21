@@ -2,7 +2,7 @@
 project_id: issuepilot
 implementation_agent: claude-code
 branch: main
-as_of: eb1f864
+as_of: ee4c20c
 active_milestone: none
 active_run: none
 ---
@@ -18,7 +18,7 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
 | M2 Verified, hardened investigation | PASS | sandbox runs 38836764621, 38935153786 | 61d8610 |
 | M3 Investigation quality | PASS | `docs/runs/2026-10-21_m3-investigation-quality.md` | bccdd8d |
 | M4 Packaging and v1 | PASS | release v1.0.0; `docs/runs/2026-10-21_m3-to-m5.md` | 64a6cef |
-| M5 Real use | PASS | `docs/runs/2026-10-21_m5-real-use.md` | m5/archdrawer-defects |
+| M5 Real use | PASS | `docs/runs/2026-10-21_m5-real-use.md` | ee4c20c |
 
 ## What exists
 
