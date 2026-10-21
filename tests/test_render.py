@@ -55,6 +55,22 @@ def test_empty_sections_are_not_rendered():
     assert "_yok_" not in comment
 
 
+def test_a_single_fix_that_repeats_the_suggestion_is_shown_once():
+    analysis = load("v2_issue2_analysis.json")
+    title = "Round half up with Decimal"
+    analysis["fix_summary"] = "Use Decimal with ROUND_HALF_UP in to_cents instead of round() on floats."
+    analysis["suggested_fixes"] = [{"title": title, "files": ["minibill/money.py"],
+                                    "description": "In to_cents, use Decimal with ROUND_HALF_UP instead of round() on floats."}]
+    assert title not in rendered(analysis)
+
+    analysis["suggested_fixes"][0]["description"] = "Store amounts as integer cents everywhere and drop floats."
+    assert title in rendered(analysis)
+
+    second = {"title": "Second", "files": [], "description": "Also fix pricing."}
+    analysis["suggested_fixes"] = [{**analysis["suggested_fixes"][0], "description": analysis["fix_summary"]}, second]
+    assert title in rendered(analysis)  # with alternatives, the list is the comparison
+
+
 def test_needs_info_asks_questions_up_front_and_offers_no_fix():
     comment = rendered(load("v2_issue3_analysis.json"))
     top = visible_part(comment)

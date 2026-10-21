@@ -40,11 +40,11 @@
     },
     "explanation": {
       "type": "string",
-      "description": "Shown in the collapsed details. How the problem happens, step by step, in at most 6 short sentences."
+      "description": "Shown in the collapsed details. How the problem happens, step by step, in at most 6 short sentences, and which of the reporter's own claims you checked. Does not repeat headline."
     },
     "evidence": {
       "type": "array",
-      "description": "At most 3 items, strongest first. The first item is shown as the location of the problem.",
+      "description": "At most 3 items, strongest first. The first item is shown as the location of the problem: the code that has to change.",
       "items": {
         "type": "object",
         "additionalProperties": false,

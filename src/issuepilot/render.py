@@ -61,6 +61,15 @@ def line_label(item: dict) -> str:
     return f"{item['path']}:{lines}"
 
 
+_WORD = re.compile(r"[a-z0-9_]+")
+
+
+def repeats(text: str, shown: str, threshold: float = 0.6) -> bool:
+    """True when most words of `text` already appear in `shown`."""
+    words = set(_WORD.findall(text.lower()))
+    return bool(words) and len(words & set(_WORD.findall(shown.lower()))) / len(words) >= threshold
+
+
 def _section(title: str, lines: list[str]) -> list[str]:
     return [f"#### {title}", "", *lines, ""] if lines else []
 
@@ -91,13 +100,20 @@ def _unverified_lines(result: Verified, t: dict) -> list[str]:
     return out
 
 
+def _fix_lines(suggested: list[dict]) -> list[str]:
+    out = []
+    for n, fix in enumerate(suggested, 1):
+        files = ", ".join(f"`{f}`" for f in fix["files"])
+        out.append(f"{n}. **{safe(fix['title'])}**: {safe(fix['description'])}" + (f" ({files})" if files else ""))
+    return out
+
+
 def _details(result: Verified, repo: str, sha: str, t: dict) -> list[str]:
     a = result.analysis
     related = [f"- {safe(r['ref'])} ({RELATED_KIND[r['kind']]}): {safe(r['why'])}" for r in a["related"]]
-    fixes = []
-    for n, fix in enumerate(a["suggested_fixes"], 1):
-        files = ", ".join(f"`{f}`" for f in fix["files"])
-        fixes.append(f"{n}. **{safe(fix['title'])}**: {safe(fix['description'])}" + (f" ({files})" if files else ""))
+    fixes = _fix_lines(a["suggested_fixes"])
+    if len(a["suggested_fixes"]) == 1 and repeats(a["suggested_fixes"][0]["description"], a["fix_summary"]):
+        fixes = []  # the one fix is the Suggestion line already shown above
     questions = [] if a["kind"] == "needs_info" else a["open_questions"]
     body = [
         *_section(t["explanation"], [safe(a["explanation"])] if a["explanation"].strip() else []),
