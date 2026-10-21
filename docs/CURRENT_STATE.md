@@ -35,12 +35,10 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
   `.github/workflows/backtest.yml`; CI runs pytest and actionlint.
 - `security/`: capability probe, injection issue, end-to-end self-test.
 - Releases v1.0.0 and v1.1.0. Sandbox `brkakyldz/issuepilot-sandbox` calls `@main`
-  (and `@v1` by hand); brkakyldz/ArchDrawer calls `@v1`.
+  (and `@v1` by hand); brkakyldz/ArchDrawer calls `@v1`, which points at v1.1.0.
 
 ## Open gates
 
-- Move the `v1` tag to v1.1.0: `git push origin refs/tags/v1 --force` from a checkout
-  that has the new local `v1` (owner; forced tag pushes are not run by the agent).
 - Two squash-merge commits made after the repository went public (50b690d, eb1f864)
   carry the account's e-mail address, and pre-rewrite commits stay reachable through
   `refs/pull/18–32/head`. Turning on "Keep my email addresses private" in the GitHub
