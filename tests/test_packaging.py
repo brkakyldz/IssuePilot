@@ -38,6 +38,13 @@ def test_prompt_placeholders_are_all_filled_by_the_action():
     assert placeholders == substituted
 
 
+def test_schema_survives_the_single_quotes_it_is_passed_in():
+    # claude_args carries --json-schema '<schema>'; one apostrophe in a description
+    # ends the quote and Claude Code refuses to start.
+    assert "--json-schema '${{ steps.prep.outputs.schema }}'" in INVESTIGATE
+    assert "'" not in (ROOT / "schema" / "analysis.schema.json").read_text(encoding="utf-8")
+
+
 def test_agent_never_gets_write_tools_or_bare_file_tools():
     allowed = re.findall(r'tools="([^"]*)"', INVESTIGATE) + re.findall(r'tools="\$tools,([^"]*)"', INVESTIGATE)
     joined = ",".join(allowed)

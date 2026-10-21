@@ -40,7 +40,7 @@
     },
     "explanation": {
       "type": "string",
-      "description": "Shown in the collapsed details. How the problem happens, step by step, in at most 6 short sentences, and which of the reporter's own claims you checked. Does not repeat headline."
+      "description": "Shown in the collapsed details. How the problem happens, step by step, in at most 6 short sentences, and which claims of the reporter you checked. Does not repeat headline."
     },
     "evidence": {
       "type": "array",
