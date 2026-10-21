@@ -1,0 +1,19 @@
+{
+  "id": "archdrawer-feature-spec",
+  "issue": {
+    "number": 31,
+    "title": "Switching to a channel needs no new deep read",
+    "body": "Size M · STORY-1 · after #30\n\n**Why.** STORY-1. A channel not drawn yet, or one marked \"needs update\", is\ndrawn from the facts alone. The repository is not read again. In 0.2 this\napplies to the LinkedIn channel; README and presentation are drawn from 0.3.\n\n**Done when.**\n- An empty or out-of-date LinkedIn channel offers to draw or redraw itself,\n  and an out-of-date one also \"Keep as it is\", which clears the mark.\n- With an engine, LinkedIn is drawn by the story run from the facts.\n  - The prompt carries the facts and asks for no repository reading.\n  - If the engine can run with no tools at all, it does. Otherwise it stays\n    read-only, as today (invariant 2).\n- Without an engine, LinkedIn uses #30's path.\n- A redraw replaces the channel and keeps nothing stale. It is one undo step.\n- The fake-CLI adapter test shows the story prompt holds the facts and no\n  instruction to read files.\n- The independent author adds STORY-1 scenarios with the fixture engine. No\n  real-engine claim is made from them.\n\n\n---\n\n**After #25.**\n- `channel-draw` (empty LinkedIn) and `channel-redraw` (outdated LinkedIn) are on the stage (ui contract, *Channels*); `channel-keep` comes with #29.\n- A redraw empties the channel's `outdated` and is one undo step.\n"
+  },
+  "source": {
+    "repo": "brkakyldz/ArchDrawer",
+    "sha": "473fccacb0c196be929d0bb9a9c738d5744b449f"
+  },
+  "expected": {
+    "kind": "feature_request"
+  },
+  "acceptance": [
+    "M5"
+  ],
+  "notes": "{\"url\": \"https://github.com/brkakyldz/ArchDrawer/issues/31\", \"created_at\": \"2026-10-20T20:58:43Z\", \"fix_commit\": null, \"fix_pr\": null, \"license\": \"MIT\", \"why\": \"First real run outside the sandbox: a feature spec, not a problem report.\"}"
+}

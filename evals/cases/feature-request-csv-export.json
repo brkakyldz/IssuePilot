@@ -1,0 +1,30 @@
+{
+  "id": "feature-request-csv-export",
+  "issue": {
+    "number": 27,
+    "title": "Export tasks as CSV",
+    "body": "It would be great to export my task list as a CSV file so I can open it in a spreadsheet.\nRight now there is only `todo list`, which prints to the terminal.\n\nSomething like `todo export --format csv > tasks.csv` would be perfect. Thanks for the tool!"
+  },
+  "source": {
+    "fixture": {
+      "commits": [
+        {
+          "message": "Add a minimal todo CLI",
+          "files": {
+            "README.md": "# todo\n\nA tiny task list for the terminal.\n\n```\ntodo add \"Buy milk\"\ntodo list\ntodo done 1\n```\n",
+            "todo/__init__.py": "",
+            "todo/store.py": "import json\nfrom pathlib import Path\n\nPATH = Path.home() / \".todo.json\"\n\n\ndef load():\n    return json.loads(PATH.read_text()) if PATH.exists() else []\n\n\ndef save(tasks):\n    PATH.write_text(json.dumps(tasks, indent=2))\n",
+            "todo/cli.py": "import sys\n\nfrom todo import store\n\n\ndef main(argv=None):\n    argv = argv if argv is not None else sys.argv[1:]\n    tasks = store.load()\n    if argv[:1] == [\"add\"]:\n        tasks.append({\"title\": \" \".join(argv[1:]), \"done\": False})\n    elif argv[:1] == [\"done\"]:\n        tasks[int(argv[1]) - 1][\"done\"] = True\n    elif argv[:1] == [\"list\"]:\n        for n, task in enumerate(tasks, 1):\n            print(f\"{n}. [{'x' if task['done'] else ' '}] {task['title']}\")\n    store.save(tasks)\n\n\nif __name__ == \"__main__\":\n    main()\n"
+          }
+        }
+      ]
+    }
+  },
+  "expected": {
+    "kind": "feature_request"
+  },
+  "acceptance": [
+    "M5"
+  ],
+  "notes": "A plain feature request from a user, with no labels: it reports no failure and should get no comment."
+}

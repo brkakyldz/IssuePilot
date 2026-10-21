@@ -5,6 +5,17 @@ callers pinned to `@v1` receive every 1.x release.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-21
+
+### Added
+- Feature requests and plans are recognised. New issues opened by bots or carrying one
+  of `skip_labels` (default `enhancement`, `feature`, `epic`) or `issuepilot:skip` are
+  left alone before any AI runs. An unlabelled issue that asks for new behaviour is
+  classified `feature_request` and gets no comment.
+
+### Changed
+- The analysis schema's `kind` gains `feature_request`.
+
 ## [1.0.0] - 2026-10-21
 
 ### Added

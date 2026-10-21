@@ -38,6 +38,12 @@ on:
         description: Hard bound on one run's spend at list-price equivalent.
         type: number
         default: 0.5
+      skip_labels:
+        description: >-
+          Comma-separated labels; a new issue carrying one is not investigated
+          (feature requests and plans). issuepilot:skip always applies.
+        type: string
+        default: enhancement,feature,epic
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         description: The user's Claude subscription token, from `claude setup-token`.
@@ -50,11 +56,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Decides before any AI runs: issues from bots, and issues carrying a skip label
+  # (feature requests, plans), are left alone. A run started by hand always proceeds.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - name: Check author and labels
+        id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          AUTHOR_TYPE: ${{ github.event.issue.user.type }}
+          LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+          SKIP_LABELS: ${{ inputs.skip_labels }}
+        run: |
+          run=true
+          if [ "$EVENT" = issues ]; then
+            if [ "$AUTHOR_TYPE" = Bot ]; then
+              run=false
+            elif jq -e --arg skip "$SKIP_LABELS,issuepilot:skip" \
+                '($skip | ascii_downcase | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(. != ""))) as $s
+                 | any(.[]; ascii_downcase as $l | $s | index($l) != null)' <<<"${LABELS:-[]}" >/dev/null; then
+              run=false
+            fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          [ "$run" = true ] || printf '### IssuePilot\n\nSkipped: opened by a bot or labelled as a feature request or plan.\n' >> "$GITHUB_STEP_SUMMARY"
+
   investigate:
-    if: >-
-      github.event_name != 'issues' ||
-      (github.event.issue.user.type != 'Bot' &&
-       !contains(github.event.issue.labels.*.name, 'issuepilot:skip'))
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

@@ -20,9 +20,6 @@ is no server and nobody else sees your token.
   the token).
 - GitHub Actions enabled for the repository.
 
-While IssuePilot's repository is private, only repositories owned by the same account
-can use it.
-
 ## Install
 
 1. **Create a token.** On your machine run `claude setup-token` and copy the token it
@@ -50,13 +47,16 @@ Set these under `with:` in your copy of the workflow.
 |---|---|---|
 | `language` | `English` | Language of the analysis. Comment labels exist in English and Turkish; other languages get English labels around the analysis. |
 | `model` | `sonnet` | Claude model alias or name. |
+| `skip_labels` | `enhancement,feature,epic` | New issues carrying one of these labels are not investigated. |
 | `max_cost_usd` | `0.5` | Upper bound on one run's spend at list-price equivalent; Claude Code stops the run there. |
 | `max_tool_calls` | `40` | Upper bound on the agent's tool calls; past it the agent must answer, and ten calls later it is stopped. |
 | `max_turns` | `60` | Claude Code's own turn limit; keep it above `max_tool_calls`. |
 | `issue_number` | the opened issue | Set by the manual trigger; leave it as in the template. |
 
-Issues opened by bots are skipped. To skip one issue, add the label
-`issuepilot:skip` before it is opened (for example from an issue template).
+Issues opened by bots are skipped, and so are issues labelled with one of
+`skip_labels` or with `issuepilot:skip` when they are opened (for example from an issue
+template). An issue that turns out to be a feature request or a plan, rather than a
+report of a problem, gets no comment.
 
 The template pins `@v1`, which follows compatible releases. Pin a full tag such as
 `@v1.0.0`, or a commit SHA, if you want updates only when you change the line yourself.

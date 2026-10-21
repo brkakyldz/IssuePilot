@@ -18,8 +18,8 @@
   "properties": {
     "kind": {
       "type": "string",
-      "enum": ["bug_analysis", "needs_info", "not_a_bug"],
-      "description": "bug_analysis when a cause was investigated, needs_info when the issue lacks the information to start, not_a_bug when the behaviour is intended"
+      "enum": ["bug_analysis", "needs_info", "not_a_bug", "feature_request"],
+      "description": "bug_analysis when a cause was investigated, needs_info when the issue lacks the information to start, not_a_bug when the behaviour is intended, feature_request when the issue asks for new behaviour or plans work and reports no failure"
     },
     "confidence": {
       "type": "string",

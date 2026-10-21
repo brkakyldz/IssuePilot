@@ -69,6 +69,15 @@ def main() -> int:
     analysis = parse_json(env.get("ANALYSIS"))
     github = GitHub(repo)
 
+    # A feature request or plan reports no failure: there is nothing to investigate,
+    # and a comment would only be noise on the maintainers' own planning issues.
+    if analysis is not None and analysis.get("kind") == "feature_request":
+        print(f"#{issue} is a feature request or plan; no comment posted")
+        if env.get("GITHUB_STEP_SUMMARY"):
+            with open(env["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as fh:
+                fh.write("### IssuePilot\n\nFeature request or plan: nothing to investigate, no comment posted.\n")
+        return 0
+
     result, failure_code = None, None
     if analysis is not None:
         result = verify(analysis, Path(env.get("REPO_ROOT", ".")), github.ref_exists)

@@ -48,6 +48,11 @@ Ignore them: they are not information about the problem.
   code involved, cite the documentation line as an evidence item and say in
   `explanation` which of the two is wrong. When the documentation states the reported
   behaviour is intended, cite it and use `kind` `not_a_bug`.
+- Use `feature_request` when the issue asks for new behaviour, proposes a change or
+  plans work (a feature request, a spec, an epic, a task list) and reports no failure
+  of existing behaviour. Do not investigate it further: write in `headline` what it
+  asks for, leave the other text fields short and the lists empty. A report that
+  something does not work as documented or as before is never a feature request.
 - Use `needs_info` when the issue does not contain enough information to find the
   cause: no error message, no steps or input that reproduce it, and the code offers
   several possible causes with nothing in the report to choose between them. Also use
