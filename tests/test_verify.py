@@ -107,3 +107,20 @@ def test_verify_splits_evidence_and_drops_only_definitely_missing_refs():
     assert len(result.analysis["evidence"]) == 3
     assert result.analysis["confidence"] == "medium"
     assert result.confidence_note == "some_evidence_unverified"
+
+
+def test_quote_that_cuts_a_long_line_short_still_matches():
+    # ArchDrawer replays (M5): verbatim starts of long lines were set aside as not found.
+    text = "a = 1\n    edges.push({ id: fresh(`${e.from}-${e.to}`), from: a, to: b, label: e.label });\nb = 2\n"
+    assert find_quote("edges.push({ id: fresh(`${e.from}-${e.to}`), from: a, to: b,", text) == [(2, 2)]
+    assert find_quote("from: a, to: b, label", text) == [(2, 2)]
+    two = "const w = Math.max(maxX - minX, 1);\n        r = { x: minX, y: minY, w };\n"
+    assert find_quote("const w = Math.max(maxX - minX, 1);\nr = { x: minX", two) == [(1, 2)]
+
+
+def test_short_or_invented_fragments_do_not_match():
+    text = "value = compute(x)\nreturn value\n"
+    assert find_quote("e = c", text) == []  # too short to count as a partial quote
+    assert find_quote("value = compute(y)", text) == []
+    assert find_quote("compute(x)\nreturn val", text) == [(1, 2)]
+    assert find_quote("compute(x)\nreturned", text) == []

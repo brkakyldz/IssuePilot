@@ -24,6 +24,9 @@ QUOTE_NOT_FOUND = "quote_not_found"
 
 CONFIDENCE_ORDER = ["low", "medium", "high"]
 
+# A quote this long may cut a line short and still count as found (find_quote).
+PARTIAL_MIN = 12
+
 
 @dataclass(frozen=True)
 class EvidenceCheck:
@@ -59,18 +62,36 @@ def find_quote(quote: str, text: str) -> list[tuple[int, int]]:
     """Return every (start, end) line range, 1-based, where the quote appears.
 
     Lines are compared with surrounding whitespace stripped and blank lines ignored,
-    so a quote that lost its indentation or skipped an empty line still matches.
+    so a quote that lost its indentation or skipped an empty line still matches. A
+    quote may also cut a long line short: its first line may be the end of a line, its
+    last line the start of one, and a one-line quote any part of a line, as long as the
+    quote holds at least PARTIAL_MIN characters (shorter fragments match anything).
     """
     wanted = [line.strip() for line in quote.splitlines() if line.strip()]
     if not wanted:
         return []
+    partial = sum(len(line) for line in wanted) >= PARTIAL_MIN
     lines = [(n, line.strip()) for n, line in enumerate(text.splitlines(), 1) if line.strip()]
     found = []
     for i in range(len(lines) - len(wanted) + 1):
         window = lines[i : i + len(wanted)]
-        if [content for _, content in window] == wanted:
+        if _window_matches([content for _, content in window], wanted, partial):
             found.append((window[0][0], window[-1][0]))
     return found
+
+
+def _window_matches(source: list[str], wanted: list[str], partial: bool) -> bool:
+    if source == wanted:
+        return True
+    if not partial:
+        return False
+    if len(wanted) == 1:
+        return wanted[0] in source[0]
+    return (
+        source[0].endswith(wanted[0])
+        and source[-1].startswith(wanted[-1])
+        and source[1:-1] == wanted[1:-1]
+    )
 
 
 def check_evidence(item: dict, root: Path) -> EvidenceCheck:

@@ -46,6 +46,7 @@ EN = {
     "turns": "{n} turns",
     "seconds": "{n} s",
     "run_log": "run log",
+    "read_only": "read-only, code not run",
     "failed_title": "Analysis failed",
     "reason": "**Reason:**",
     "failures": {
@@ -118,6 +119,7 @@ TR = {
     "turns": "{n} adım",
     "seconds": "{n} sn",
     "run_log": "çalışma kaydı",
+    "read_only": "salt okunur, kod çalıştırılmadı",
     "failed_title": "Analiz yapılamadı",
     "reason": "**Sebep:**",
     "failures": {

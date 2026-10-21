@@ -118,7 +118,7 @@ def test_labels_follow_the_configured_language():
     result = verify(load("v2_issue2_analysis.json"), REPO, lambda kind, ref: True)
     english = render_analysis(result, "o/r", SHA, RUN, METRICS)
     assert "### IssuePilot · Bug analysis · confidence: high" in english
-    for label in ["**Cause:**", "**Where:**", "**Suggestion:**", "**Not sure about:**", "6 turns"]:
+    for label in ["**Cause:**", "**Where:**", "**Suggestion:**", "**Not sure about:**", "6 turns", "read-only, code not run"]:
         assert label in english
     assert "Neden" not in english
     # A language without a label table gets English labels around Claude's text.

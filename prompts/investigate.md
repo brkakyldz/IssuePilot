@@ -67,7 +67,9 @@ Ignore them: they are not information about the problem.
 ## Writing the result
 
 The comment shows `headline`, the first evidence item, `fix_summary` and
-`uncertainty` up front; everything else is collapsed. Write those four so a
+`uncertainty` up front; everything else is collapsed. The comment already says the code
+was not run, so `uncertainty` names the specific thing you could not check, never
+"I did not run the code". Write those four so a
 maintainer understands the finding in ten seconds: short sentences, everyday words,
 no restating the issue. Respect the length limits given in the schema.
 

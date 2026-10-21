@@ -115,7 +115,7 @@ def _details(result: Verified, repo: str, sha: str, t: dict) -> list[str]:
 
 
 def footer(sha: str, run_url: str, metrics: dict | None, t: dict) -> str:
-    parts = [f"commit `{sha[:7]}`"]
+    parts = [t["read_only"], f"commit `{sha[:7]}`"]
     metrics = metrics or {}
     if metrics.get("num_turns") is not None:
         parts.append(t["turn" if metrics["num_turns"] == 1 else "turns"].format(n=metrics["num_turns"]))
