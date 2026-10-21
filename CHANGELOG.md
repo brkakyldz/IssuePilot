@@ -5,6 +5,8 @@ callers pinned to `@v1` receive every 1.x release.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-22
+
 Measured on 20 real issues from pydantic, pandas, black, pytest, hono, vite and svelte
 (field trial, `docs/runs/2026-10-21_field-trial-1.md`).
 

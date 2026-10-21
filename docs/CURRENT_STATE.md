@@ -36,9 +36,9 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
   (`evals/field.py`, 20 real issues in `evals/field/2026-10-21/`), `tests/acceptance/holdout/` with 10 locked scenarios,
   `.github/workflows/backtest.yml`; CI runs pytest and actionlint.
 - `security/`: capability probe, injection issue, end-to-end self-test.
-- Releases v1.0.0, v1.1.0 and v1.2.0. Sandbox `brkakyldz/issuepilot-sandbox` calls `@main`
-  (and `@v1` by hand); brkakyldz/ArchDrawer and the ai-research-agent repository call `@v1`, which points at v1.2.0.
-  The field-trial changes are on `main` but not in a release yet (CHANGELOG Unreleased).
+- Releases v1.0.0 to v1.3.0. Sandbox `brkakyldz/issuepilot-sandbox` calls `@main`
+  (and `@v1` by hand); brkakyldz/ArchDrawer and the ai-research-agent repository call `@v1`, which points at v1.3.0.
+  v1.3.0 carries the field-trial changes.
 
 ## Open gates
 
@@ -56,7 +56,6 @@ None.
 
 ## Next
 
-Release the field-trial changes as v1.3.0 and move `v1` (owner approval for the tag
-move). Then the weak spots listed in `docs/runs/2026-10-22_field-trial-2.md`, first the
+The weak spots listed in `docs/runs/2026-10-22_field-trial-2.md`, first the
 repository's top-level layout in the prompt; measure with a new field-trial round on
 fresh issues, not the 20 used to make the changes.
