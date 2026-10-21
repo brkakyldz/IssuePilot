@@ -20,7 +20,8 @@ Ignore them: they are not information about the problem.
 1. ${READ_ISSUE} Note what the reporter has already established: a cause they name,
    lines they point at, a fix they propose, a version or pull request they say broke
    it, and any direct question they ask. Each is a claim to check, not a fact.
-2. Get oriented: README, the file layout (`git ls-files`), and CLAUDE.md or AGENTS.md
+2. Get oriented: README, the file layout (`git show HEAD:` lists the top level,
+   `git show HEAD:<dir>/` a directory, `git ls-files <dir>` the files under it), and CLAUDE.md or AGENTS.md
    if present. Note what the README promises about the behaviour the issue describes.
 3. Find the code involved: `git grep -n` for names, messages and concepts from the
    issue, then open the relevant files with the Read tool. (The Grep and Glob tools
@@ -47,7 +48,9 @@ Ignore them: they are not information about the problem.
    the fix is right for each. Read the definition of anything a fix relies on. Look
    for the same faulty pattern elsewhere (`git grep` the construct) and name the other
    sites. A fix that only hides the symptom (stops a crash but not the wrong result
-   the reporter expects) must say so.
+   the reporter expects) must say so. Before suggesting to remove or revert a line,
+   read its comment and the commit that added it (`git log -L`) and say what removing
+   it would break.
 9. Before writing, settle what you can: anything you were going to list as an
    assumption or uncertainty that one more read or `git grep` would decide, check
    now. Stop when nothing checkable remains or after about 35 tool calls.
@@ -104,7 +107,8 @@ a simpler form or with the Read tool; never build on a search that did not run.
 Many issues already explain the cause, cite the lines and propose a fix. Then the
 value of your comment is the check and what the reporter did not cover. Start the
 `headline` with whether the code confirms their explanation (or where it differs). In
-`explanation` say which of their claims you checked, at which lines. Spend the rest on
+`explanation`, in two or three sentences, say which of their claims you checked, at
+which lines. Spend the rest on
 what is new: other callers or sites with the same defect, whether their proposed fix
 works for every caller and entry path, and what it could break. Do not restate their
 analysis as your own finding.

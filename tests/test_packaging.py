@@ -107,8 +107,17 @@ def test_tool_budget_hook_refuses_then_stops(tmp_path):
     for _ in range(8):
         _hook(tmp_path, call)
     assert '"continue":false' in _hook(tmp_path, call).replace(" ", "")
-    # The structured result is never refused, even past the budget.
+    # Past the budget the structured result is accepted at once.
     assert _hook(tmp_path, {"tool_name": "StructuredOutput", "tool_input": {}}) == ""
+
+
+def test_first_result_is_sent_back_once_with_a_checklist(tmp_path):
+    result = {"tool_name": "StructuredOutput", "tool_input": {"kind": "bug_analysis"}}
+    _hook(tmp_path, {"tool_name": "Bash", "tool_input": {"command": "git log -1"}}, budget=40)
+    first = _hook(tmp_path, result, budget=40)
+    assert '"deny"' in first and "Before you submit" in first and "git show HEAD:" in first
+    assert _hook(tmp_path, result, budget=40) == ""
+    assert (tmp_path / "count").read_text().strip() == "1"  # results are not tool calls
 
 
 def test_tool_budget_hook_refuses_an_empty_bash_call(tmp_path):
