@@ -55,7 +55,7 @@ def test_empty_sections_are_not_rendered():
     assert "_yok_" not in comment
 
 
-def test_the_first_fix_points_at_the_suggestion_instead_of_repeating_it():
+def test_the_first_fix_is_not_repeated_below_the_suggestion():
     analysis = load("v2_issue2_analysis.json")
     analysis["fix_summary"] = "Use Decimal with ROUND_HALF_UP in to_cents."
     analysis["suggested_fixes"] = [
@@ -63,11 +63,26 @@ def test_the_first_fix_points_at_the_suggestion_instead_of_repeating_it():
         {"title": "Integer cents", "files": [], "description": "SECOND-DESCRIPTION"},
     ]
     comment = rendered(analysis)
-    assert "1. **Decimal half-up**: yukarıdaki öneri (`minibill/money.py`)" in comment
-    assert "FIRST-DESCRIPTION" not in comment and "2. **Integer cents**: SECOND-DESCRIPTION" in comment
+    assert "FIRST-DESCRIPTION" not in comment and "Decimal half-up" not in comment
+    assert "#### Diğer seçenekler" in comment and "1. **Integer cents**: SECOND-DESCRIPTION" in comment
 
-    analysis["fix_summary"] = ""  # nothing shown above: the first fix is written out
+    analysis["suggested_fixes"] = analysis["suggested_fixes"][:1]
+    assert "Diğer seçenekler" not in rendered(analysis)
+
+    analysis["fix_summary"] = ""  # nothing shown above: the fix is written out
     assert "FIRST-DESCRIPTION" in rendered(analysis)
+
+
+def test_labels_steps_and_cuts():
+    from issuepilot.render import steps, unlabelled
+
+    assert unlabelled("Missing: a backtrace", "**Missing:**") == "a backtrace"
+    assert unlabelled("eksik olan: sürüm", "**Eksik olan:**") == "sürüm"
+    assert unlabelled("Nothing is missing", "**Missing:**") == "Nothing is missing"
+    assert steps("1. Reads x. 2. Calls f(3.5) on it. 3) Fails.") == "1. Reads x.\n2. Calls f(3.5) on it.\n3) Fails."
+    assert steps("Version 3.0. 2. is not a step here") == "Version 3.0. 2. is not a step here"
+    assert short("First sentence here. Second one runs on and on.", 30) == "First sentence here."
+    assert short("one two three four five six seven", 20) == "one two three four…"
 
 
 def test_needs_info_asks_questions_up_front_and_offers_no_fix():

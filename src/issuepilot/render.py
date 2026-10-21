@@ -38,9 +38,30 @@ def safe(text: str) -> str:
 
 
 def short(text: str, limit: int) -> str:
-    """One line, at most `limit` characters."""
+    """One line, at most `limit` characters, cut after a sentence where possible."""
     text = " ".join(text.split())
-    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 1]
+    end = max(cut.rfind(". "), cut.rfind("? "), cut.rfind("! "))
+    if end >= limit // 2:
+        return cut[: end + 1]
+    return cut[: cut.rfind(" ")].rstrip(",;:") + "…" if " " in cut else cut + "…"
+
+
+def unlabelled(text: str, label: str) -> str:
+    """Drop a copy of the comment's own label ("Missing:") that the model wrote itself."""
+    plain = label.strip("*").strip()
+    stripped = text.lstrip()
+    return stripped[len(plain):].lstrip() if stripped.lower().startswith(plain.lower()) else text
+
+
+_STEP = re.compile(r"\s+(?=\d{1,2}[.)]\s)")
+
+
+def steps(text: str) -> str:
+    """An explanation written as "1. … 2. …" becomes one step per line."""
+    return _STEP.sub("\n", text.strip()) if re.match(r"\s*1[.)]\s", text) else text
 
 
 def fence(quote: str) -> str:
@@ -80,7 +101,7 @@ def _evidence_lines(checks: list[EvidenceCheck], repo: str, sha: str, t: dict) -
 
 def _unverified_lines(result: Verified, t: dict) -> list[str]:
     out = [
-        f"- `{safe(c.item['path'])}`: {safe(c.item['why'])} "
+        f"- `{safe(_where(c.item))}`: {safe(c.item['why'])} "
         f"<sub>({t['unverified_reason'].get(c.reason, c.reason)})</sub>"
         for c in result.unverified
     ]
@@ -91,27 +112,34 @@ def _unverified_lines(result: Verified, t: dict) -> list[str]:
     return out
 
 
-def _fix_lines(a: dict, t: dict) -> list[str]:
-    """The first fix is the Suggestion line already shown above: name it, do not repeat it."""
+def _where(item: dict) -> str:
+    if isinstance(item.get("start_line"), int) and isinstance(item.get("end_line"), int):
+        return line_label(item)
+    return str(item.get("path", ""))
+
+
+def _fix_lines(fixes: list[dict]) -> list[str]:
     out = []
-    for n, fix in enumerate(a["suggested_fixes"], 1):
+    for n, fix in enumerate(fixes, 1):
         files = ", ".join(f"`{f}`" for f in fix["files"])
-        text = t["fix_above"] if n == 1 and a["fix_summary"].strip() else safe(fix["description"])
-        out.append(f"{n}. **{safe(fix['title'])}**: {text}" + (f" ({files})" if files else ""))
+        out.append(f"{n}. **{safe(fix['title'])}**: {safe(fix['description'])}" + (f" ({files})" if files else ""))
     return out
 
 
 def _details(result: Verified, repo: str, sha: str, t: dict) -> list[str]:
     a = result.analysis
     related = [f"- {safe(r['ref'])} ({RELATED_KIND[r['kind']]}): {safe(r['why'])}" for r in a["related"]]
-    fixes = _fix_lines(a, t)
+    # The first fix is the Suggestion line already shown above; the list keeps the others.
+    shown_above = bool(a["fix_summary"].strip())
+    fixes = _fix_lines(a["suggested_fixes"][1:] if shown_above else a["suggested_fixes"])
+    fixes_title = t["other_fixes"] if shown_above else t["suggested_fixes"]
     questions = [] if a["kind"] == "needs_info" else a["open_questions"]
     body = [
-        *_section(t["explanation"], [safe(a["explanation"])] if a["explanation"].strip() else []),
+        *_section(t["explanation"], [safe(steps(a["explanation"]))] if a["explanation"].strip() else []),
         *_section(t["evidence"], _evidence_lines(result.evidence, repo, sha, t)),
         *_section(t["unverified"], _unverified_lines(result, t)),
         *_section(t["related"], related),
-        *_section(t["suggested_fixes"], fixes),
+        *_section(fixes_title, fixes),
         *_section(t["verification_steps"], [f"- {safe(s)}" for s in a["verification_steps"]]),
         *_section(t["assumptions"], [f"- {safe(s)}" for s in a["assumptions"]]),
         *_section(t["open_questions"], [f"- {safe(s)}" for s in questions]),
@@ -144,22 +172,22 @@ def render_analysis(
     out = [MARKER, f"### IssuePilot · {kind} · {t['confidence_label']}: {confidence}", ""]
 
     if a["kind"] == "needs_info":
-        out += [f"{t['missing']} {safe(short(a['headline'], HEADLINE_MAX))}", ""]
+        out += [f"{t['missing']} {safe(short(unlabelled(a['headline'], t['missing']), HEADLINE_MAX))}", ""]
         questions = a["open_questions"][:MAX_QUESTIONS]
         if questions:
             out += [t["questions"], *(f"- {safe(short(q, HEADLINE_MAX))}" for q in questions), ""]
     else:
-        out += [f"{t['cause']} {safe(short(a['headline'], HEADLINE_MAX))}", ""]
+        out += [f"{t['cause']} {safe(short(unlabelled(a['headline'], t['cause']), HEADLINE_MAX))}", ""]
         if result.evidence:
             # A bare permalink on its own line renders as a code preview on GitHub.
             out += [t["where"], permalink(repo, sha, result.evidence[0].item), ""]
         else:
             out += [t["where_none"], ""]
         if a["fix_summary"].strip():
-            out += [f"{t['fix']} {safe(short(a['fix_summary'], FIX_MAX))}", ""]
+            out += [f"{t['fix']} {safe(short(unlabelled(a['fix_summary'], t['fix']), FIX_MAX))}", ""]
 
     if a["uncertainty"].strip():
-        out += [f"{t['unsure']} {safe(short(a['uncertainty'], UNCERTAINTY_MAX))}", ""]
+        out += [f"{t['unsure']} {safe(short(unlabelled(a['uncertainty'], t['unsure']), UNCERTAINTY_MAX))}", ""]
     out += _details(result, repo, sha, t)
     out.append(footer(sha, run_url, metrics, t))
     return "\n".join(out) + "\n"

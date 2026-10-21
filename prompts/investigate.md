@@ -33,7 +33,9 @@ Ignore them: they are not information about the problem.
    issue names a version or pull request where it started, or one where it last
    worked, check it: `git log -S'<code>'` or `git log -L<start>,<end>:<file>` on the
    lines involved, `git show <commit>` on a named culprit, `git show <commit>:<path>`
-   when a traceback comes from another version whose commit is in this history. Say
+   when a traceback comes from another version whose commit is in this history, and
+   `git diff <commit> HEAD -- <path>` to say whether this checkout already changed
+   that code. Say
    what that change does differently, in terms of the issue's scenario.
 5. ${RELATED_WORK}
 6. Compare documentation with the code involved: `git grep -n -i` the README and docs
@@ -87,6 +89,10 @@ a simpler form or with the Read tool; never build on a search that did not run.
   of existing behaviour. Do not investigate it further: write in `headline` what it
   asks for, leave the other text fields short and the lists empty. A report that
   something does not work as documented or as before is never a feature request.
+- When no code in this repository has to change (the cause is in a dependency, or
+  nothing you read is at fault), say so in `headline` and do not cite ruled-out code
+  as the first evidence item. If one step by the reporter would decide it (another
+  version, a setting turned off), use `needs_info` and ask for that step.
 - A report that names the commit or pull request that broke it, with a working and a
   broken version, is a `bug_analysis`: reason from that change's diff to the
   mechanism. Never ask the reporter for what the issue or its linked reproduction
