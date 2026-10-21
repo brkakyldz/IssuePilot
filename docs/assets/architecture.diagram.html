@@ -1,0 +1,43 @@
+<style>
+  .canvas { --w: 1600px; --h: 1000px; }
+  .stage > .grid { --cols: 1fr; --gap-y: 92px; }
+  .lane { --cols: repeat(7, 172px); --gap-x: 36px; --gap-y: 74px; }
+</style>
+<div class="canvas">
+  <div class="kicker">GitHub Actions · <b>IssuePilot</b></div>
+  <h1 class="title">An issue analysis that is checked before it is posted</h1>
+  <p class="subtitle">Claude investigates with read-only access and returns JSON; a second job without AI verifies it and writes the one comment.</p>
+
+  <div class="stage"><div class="grid">
+
+    <div class="zone lane" id="z-inv" style="--zb: color-mix(in srgb, var(--hot) 45%, transparent); --zl: var(--hot)">
+      <div class="zone-label">Investigate · read-only token</div>
+      <div class="end" id="issue" data-icon="chat" style="grid-column: 1; grid-row: 1">Issue</div>
+      <div class="card llm star" id="agent" data-icon="spark" style="grid-column: 2 / 4; grid-row: 1"><div class="head"><span class="name">Claude Code</span><span class="tag">LLM</span></div><div class="body"><div class="fn">owner's subscription</div><div class="note">no write tools</div></div></div>
+      <div class="card data sm" id="json" data-icon="file" style="grid-column: 7; grid-row: 1"><div class="head"><span class="name">Analysis</span></div><div class="body"><div class="fn">JSON schema</div></div></div>
+      <div class="card tool sm" id="tools" data-icon="search" style="grid-column: 2 / 4; grid-row: 2"><div class="head"><span class="name">Read-only tools</span></div><div class="body"><div class="fn">git grep · log · blame · gh view</div></div></div>
+      <div class="card gate sm" id="limits" data-icon="shield" style="grid-column: 4 / 7; grid-row: 2"><div class="head"><span class="name">Limits</span></div><div class="body"><div class="fn">checkout only · no repo config · $0.50 cap</div></div></div>
+    </div>
+
+    <div class="zone lane" id="z-pub">
+      <div class="zone-label">Publish · no AI · issues: write</div>
+      <div class="end" id="comment" data-icon="send" style="grid-column: 1; grid-row: 1">Comment</div>
+      <div class="card code sm" id="render" data-icon="code" style="grid-column: 3; grid-row: 1"><div class="head"><span class="name">Render</span></div><div class="body"><div class="fn">short + details</div></div></div>
+      <div class="card gate sm" id="leak" data-icon="shield" style="grid-column: 5; grid-row: 1"><div class="head"><span class="name">Leak scan</span></div><div class="body"><div class="fn">secrets · canary</div></div></div>
+      <div class="card gate sm" id="verify" data-icon="check" style="grid-column: 7; grid-row: 1"><div class="head"><span class="name">Verify</span></div><div class="body"><div class="fn">cited lines</div></div></div>
+    </div>
+
+  </div></div>
+
+  <div class="footer"><div class="legend" data-auto></div><span>IssuePilot</span></div>
+</div>
+
+<script type="application/json" id="edges">[
+  {"from": "issue",  "to": "agent",   "hot": true, "step": 1},
+  {"kind": "vpair",  "from": "agent", "to": "tools", "hot": true, "step": 2},
+  {"from": "agent",  "to": "json",    "hot": true, "step": 3, "label": "structured output"},
+  {"from": "json",   "to": "verify",  "fs": "b", "ts": "t", "hot": true, "step": 4, "label": "fresh checkout", "at": 0.7},
+  {"from": "verify", "to": "leak",    "hot": true, "step": 5},
+  {"from": "leak",   "to": "render",  "hot": true, "step": 6},
+  {"from": "render", "to": "comment", "hot": true, "step": 7}
+]</script>
