@@ -34,7 +34,7 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
 - `evals/` with 23 cases (5 are genuine ArchDrawer defects), `tests/acceptance/holdout/` with 10 locked scenarios,
   `.github/workflows/backtest.yml`; CI runs pytest and actionlint.
 - `security/`: capability probe, injection issue, end-to-end self-test.
-- Releases v1.0.0 and v1.1.0. Sandbox `brkakyldz/issuepilot-sandbox` calls `@main`
+- Releases v1.0.0, v1.1.0 and v1.2.0. Sandbox `brkakyldz/issuepilot-sandbox` calls `@main`
   (and `@v1` by hand); brkakyldz/ArchDrawer calls `@v1`, which points at v1.1.0.
 
 ## Open gates
@@ -53,7 +53,6 @@ None.
 
 ## Next
 
-Release the unreleased changes (partial-line quotes, read-only footer) as v1.2.0 and
-move `v1`; then read IssuePilot's comments on the next problem reports opened in
+Read IssuePilot's comments on the next problem reports opened in
 ArchDrawer. Known weak spots are in the M3 report; six genuine ArchDrawer defects are
 listed in the M5 report.

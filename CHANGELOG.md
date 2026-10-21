@@ -5,6 +5,8 @@ callers pinned to `@v1` receive every 1.x release.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-21
+
 ### Fixed
 - A cited quote that cuts a long line short (at least 12 characters, verbatim) now
   counts as found; such citations were set aside and lowered the stated confidence.
