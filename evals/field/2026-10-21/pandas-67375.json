@@ -1,0 +1,44 @@
+{
+  "id": "pandas-67375",
+  "issue": {
+    "number": 67375,
+    "title": "BUG: read_csv with usecols raises IndexError in low-memory mixed-dtype warning path",
+    "body": "### Pandas version checks\n\n- [x] I have checked that this issue has not already been reported.\n\n- [x] I have confirmed this bug exists on the [latest version](https://pandas.pydata.org/docs/whatsnew/index.html) of pandas.\n\n- [ ] I have confirmed this bug exists on the [main branch](https://pandas.pydata.org/docs/dev/getting_started/install.html#installing-the-development-version-of-pandas) of pandas.\n\n\n### Reproducible Example\n\n```python\nimport csv\nimport pandas as pd\n\nfile = \"repro.csv\"\n\nN_COLS = 87\nN_ROWS = 20000\nTARGET_POS = 50\nTARGET_COL = \"Overall_Judgment\"\nSWITCH_ROW = 8192\n\ncolumns = [f\"col_{i}\" for i in range(N_COLS)]\ncolumns[TARGET_POS] = TARGET_COL\n\nwith open(file, \"w\", newline=\"\", encoding=\"utf-8\") as f:\n    writer = csv.writer(f)\n    writer.writerow(columns)\n\n    for i in range(N_ROWS):\n        row = [\"x\"] * N_COLS\n\n        if i < SWITCH_ROW:\n            row[TARGET_POS] = \"YES\"\n        else:\n            row[TARGET_POS] = \"\"\n\n        writer.writerow(row)\n\npd.read_csv(file, usecols=[TARGET_COL])\n```\n\n### Issue Description\n\nOn pandas 3.0.5, read_csv raises an internal IndexError when usecols selects a\ncolumn that is not at position 0 in the original CSV and different low-memory\nchunks infer different dtypes for that column.\n\nIn the reproducible example above, the selected column contains strings in the\nfirst low-memory chunk and only missing values in later chunks.\n\nThe traceback ends with:\n\n    File \"pandas/io/parsers/c_parser_wrapper.py\", line 361, in _concatenate_chunks\n        warning_columns.append(column_names[name])\n                               ~~~~~~~~~~~~^^^^^^\n    IndexError: list index out of range\n\nChanging only TARGET_POS from 50 to 0 makes the IndexError disappear. In that\ncase, read_csv succeeds and emits the expected DtypeWarning instead.\n\nThe following workarounds also succeed:\n\n- low_memory=False\n- explicitly specifying dtype for the selected column\n- engine=\"python\"\n\nThis suggests that the failure occurs in the low-memory mixed-dtype warning path\nwhen usecols is used for a column whose original position is greater than 0.\n\n### Expected Behavior\n\nread_csv should successfully return the selected column.\n\nIf different low-memory chunks cause mixed dtype inference, pandas may emit a\nDtypeWarning, as it does when the selected column is at position 0, but it\nshould not raise an internal IndexError.\n\n### Installed Versions\n\n<details>\n\nINSTALLED VERSIONS\n------------------\ncommit                : e68db09ecf6427d1b62e565bacf17f2e525a3032\npython                : 3.13.12\npython-bits           : 64\nOS                    : Windows\nOS-release            : 11\nVersion               : 10.0.26200\nmachine               : AMD64\nprocessor             : Intel64 Family 6 Model 197 Stepping 2, GenuineIntel\nbyteorder             : little\nLC_ALL                : None\nLANG                  : None\nLOCALE                : Chinese (Simplified)_China.936\n\npandas                : 3.0.5\nnumpy                 : 2.5.1\ndateutil              : 2.9.0.post0\npip                   : 25.1.1\nCython                : None\nsphinx                : None\nIPython               : 9.15.0\nadbc-driver-postgresql: None\nadbc-driver-sqlite    : None\nbs4                   : None\nbottleneck            : None\nfastparquet           : None\nfsspec                : 2026.7.0\nhtml5lib              : None\nhypothesis            : None\ngcsfs                 : None\njinja2                : 3.1.6\nlxml.etree            : 6.1.1\nmatplotlib            : 3.11.1\nnumba                 : None\nnumexpr               : None\nodfpy                 : None\nopenpyxl              : 3.1.5\npsycopg2              : None\npymysql               : None\npyarrow               : 25.0.0\npyiceberg             : None\npyreadstat            : None\npytest                : None\npython-calamine       : None\npytz                  : None\npyxlsb                : None\ns3fs                  : None\nscipy                 : 1.18.0\nsqlalchemy            : 2.0.52\ntables                : None\ntabulate              : None\nxarray                : None\nxlrd                  : 2.0.2\nxlsxwriter            : None\nzstandard             : None\nqtpy                  : None\npyqt5                 : None\n\n</details>"
+  },
+  "source": {
+    "repo": "pandas-dev/pandas",
+    "sha": "959256a62c2e398b095409243843a65b4796c6c6"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "pandas/io/parsers/c_parser_wrapper.py",
+        "start_line": 252,
+        "end_line": 257
+      },
+      {
+        "path": "pandas/io/parsers/c_parser_wrapper.py",
+        "start_line": 270,
+        "end_line": 276
+      },
+      {
+        "path": "pandas/io/parsers/c_parser_wrapper.py",
+        "start_line": 421,
+        "end_line": 427
+      },
+      {
+        "path": "pandas/io/parsers/c_parser_wrapper.py",
+        "start_line": 430,
+        "end_line": 435
+      },
+      {
+        "path": "pandas/io/parsers/c_parser_wrapper.py",
+        "start_line": 464,
+        "end_line": 474
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/pandas-dev/pandas/issues/67375\", \"created_at\": \"2026-08-30T04:40:23Z\", \"license\": \"BSD-3-Clause\", \"why\": \"field trial: closed 'Bug' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 67725, \"fix_pr_title\": \"BUG: read_csv low_memory mixed-dtype warning named the wrong columns (GH#67375)\", \"fix_commit\": \"0a5f661b2206bb7bf3077b7ca2e7cf599811163d\"}"
+}

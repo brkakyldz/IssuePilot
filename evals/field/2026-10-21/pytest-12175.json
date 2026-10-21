@@ -1,0 +1,44 @@
+{
+  "id": "pytest-12175",
+  "issue": {
+    "number": 12175,
+    "title": "``ExceptionInfo.for_later()`` wont add assertion strip text",
+    "body": "Using ``exc_info.exconly(tryshort=True)`` is meant to remove ``AssertionError: `` from the exception message according to [(ref)](https://docs.pytest.org/en/7.1.x/reference/reference.html#pytest.ExceptionInfo.exconly)\r\n\r\n> When 'tryshort' resolves to True, and the exception is an AssertionError, only the actual exception part of the exception representation is returned (so 'AssertionError: ' is removed from the beginning).\r\n\r\nHowever, this is not the case. In addition, the tests do not assert this behaviour:\r\n\r\nhttps://github.com/pytest-dev/pytest/blob/44895289c725ed922889c882b7f1b78b741eba20/testing/code/test_excinfo.py#L332-L339\r\n\r\n### MWE\r\n\r\n```bash\r\ncat <<-EOF > excinfo_exconly.py\r\nimport pytest\r\n\r\ndef test():\r\n    with pytest.raises(AssertionError) as exc_info:\r\n        raise AssertionError('message')\r\n\r\n    assert exc_info.exconly(tryshort=True) == 'message'\r\nEOF\r\npytest excinfo_exconly.py\r\n```\r\n\r\n### Environment\r\n\r\n```text\r\nPlatform:              linux; (Linux-5.14.21-150500.55.52-default-x86_64-with-glibc2.31)\r\nPython version:        3.10.13 (main, Sep 05 2023, 11:46:10) [GCC])\r\nPython implementation: CPython\r\nPytest version:\t\t   8.0.2\r\n```"
+  },
+  "source": {
+    "repo": "pytest-dev/pytest",
+    "sha": "e90885e6b3b6223a4b391632a15bfc2a0a20a591"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/_pytest/_code/code.py",
+        "start_line": 504,
+        "end_line": 516
+      },
+      {
+        "path": "src/_pytest/_code/code.py",
+        "start_line": 557,
+        "end_line": 571
+      },
+      {
+        "path": "src/_pytest/_code/code.py",
+        "start_line": 621,
+        "end_line": 626
+      },
+      {
+        "path": "src/_pytest/_code/code.py",
+        "start_line": 653,
+        "end_line": 660
+      },
+      {
+        "path": "src/_pytest/_code/code.py",
+        "start_line": 678,
+        "end_line": 684
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/pytest-dev/pytest/issues/12175\", \"created_at\": \"2024-04-01T10:19:02Z\", \"license\": \"MIT\", \"why\": \"field trial: closed 'type: bug' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 15149, \"fix_pr_title\": \"Derive ExceptionInfo strip text lazily from the exception\", \"fix_commit\": \"3e34325a991b0f3b77f2ca27a227addcc0570bc2\"}"
+}

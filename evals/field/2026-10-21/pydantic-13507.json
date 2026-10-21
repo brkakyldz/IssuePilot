@@ -1,0 +1,39 @@
+{
+  "id": "pydantic-13507",
+  "issue": {
+    "number": 13507,
+    "title": "Experimental pipeline: every constraint chained after `ge`/`lt`/`le` is dropped from the JSON schema",
+    "body": "### Initial Checks\n\n- [x] I confirm that I'm using Pydantic V2\n\n### Description\n\nIn the experimental pipeline API, chaining constraints silently drops every bound after the first from the generated JSON schema. **Validation stays correct** - only the published schema is wrong, which makes it easy to miss.\n\nAll bounds below are non-zero, so this is not #13450 (falsy zero bounds in `Interval`). Observed identically on released 2.13.4 and on `main` (2.14.0a1).\n\n| expression | JSON schema | validation |\n|---|---|---|\n| `validate_as(int).ge(1).le(100)` | `{\"minimum\": 1, \"type\": \"integer\"}` | 0 reject, 50 accept, 200 reject |\n| `validate_as(int).le(100).ge(1)` | `{\"maximum\": 100, \"type\": \"integer\"}` | 0 reject, 50 accept, 200 reject |\n| `validate_as(int).constrain(Interval(ge=1, le=100))` | `{\"minimum\": 1, \"type\": \"integer\"}` | 0 reject, 50 accept, 200 reject |\n| `validate_as(int).ge(1).le(100).multiple_of(5)` | `{\"minimum\": 1, \"type\": \"integer\"}` | correct |\n| `validate_as(int).gt(1).lt(100)` *(control)* | `{\"exclusiveMinimum\": 1, \"exclusiveMaximum\": 100, ...}` | correct |\n| `Annotated[int, Ge(1), Le(100)]` *(control)* | `{\"minimum\": 1, \"maximum\": 100, ...}` | correct |\n\nSo `.ge(1).le(100).multiple_of(5)` publishes a schema advertising *any integer >= 1*, while the validator rejects 200 and 52. For FastAPI that means the OpenAPI component and every generated client disagree with the server.\n\n### Cause\n\nIn `_apply_constraint()`, the `Ge`, `Lt` and `Le` branches apply their fallback function validator **unconditionally** - including when the native core-schema field was just set:\n\n```python\nelif isinstance(constraint, annotated_types.Ge):\n    ge = constraint.ge\n    if s and s['type'] in {'int', 'float', 'decimal'}:\n        s = s.copy()\n        if s['type'] == 'int' and isinstance(ge, int):\n            s['ge'] = ge          # native constraint applied...\n        ...\n\n    def check_ge(v: Any) -> bool:\n        return v >= ge\n\n    s = _check_func(check_ge, f'>= {ge}', s)   # ...and then wrapped anyway\n```\n\n`_check_func` wraps the schema in `function-after`. The next constraint in the chain sees `s['type'] == 'function-after'`, which is not in `{'int', 'float', 'decimal'}`, so it cannot set its own native field and survives only inside an opaque callable that JSON-schema generation cannot read. Core schema for `.ge(1).le(100)`:\n\n```\n{'type': 'function-after',\n 'function': ...,                       # <- le(100) lives in here, invisible to the schema\n 'schema': {'type': 'function-after',\n            'function': ...,            # <- redundant ge check\n            'schema': {'type': 'int', 'ge': 1}}}\n```\n\n`Gt` is the control that works, and only by accident: its fallback sits in an `else:`, so nothing is wrapped when the native constraint applies.\n\n### Relationship to the open PRs in this function\n\nTwo in-flight PRs each fix one branch of this, for unrelated reasons, and between them they leave `Ge`, `Lt` and `Le` untouched:\n\n- **#13473** adds a `native_constraint_applied` flag to `MultipleOf` to avoid a float parity problem. Same shape as the fix needed here.\n- **#13446** restructures `Gt` so the fallback lands inside the numeric branch.\n\nWorth flagging on the second one: #13446's description argues that `Gt` is *uniquely* broken and holds up `Ge`/`Lt`/`Le`/`MultipleOf` as the correct model, because they \"always apply\" the check and so enforce the bound on a type mismatch. That is true of validation, but always applying it is exactly what destroys the schema. `Gt` is uniquely broken for validation; the other four are broken for schema. Whichever way this is fixed, it probably wants to be one symmetric change across all five branches rather than three separate patches.\n\n### Example Code\n\n```python\nfrom typing import Annotated\n\nfrom pydantic import TypeAdapter\nfrom pydantic.experimental.pipeline import validate_as\n\nta = TypeAdapter(Annotated[int, validate_as(int).ge(1).le(100)])\n\nprint(ta.json_schema())      # {'minimum': 1, 'type': 'integer'}   <- no maximum\nta.validate_python(200)      # ValidationError, as it should be\n\n# control: the same constraints without the pipeline\nimport annotated_types\nprint(TypeAdapter(Annotated[int, annotated_types.Ge(1), annotated_types.Le(100)]).json_schema())\n# {'maximum': 100, 'minimum': 1, 'type': 'integer'}\n```\n\n### Python, Pydantic & OS Version\n\n```text\n             pydantic version: 2.13.4\n        pydantic-core version: 2.46.4\n          pydantic-core build: profile=release pgo=false\n               python version: 3.11.15 (main, Mar  3 2026, 09:26:23) [GCC 13.3.0]\n                     platform: Linux-6.18.5-x86_64-with-glibc2.39\n             related packages: typing_extensions-4.16.0\n                       commit: unknown\n```\n\nI have a PR ready that applies the `native_constraint_applied` shape from #13473 to `Ge`/`Lt`/`Le`, with regression tests that fail without it. Happy to open it, or to fold it into one of the existing PRs if you'd rather land a single change."
+  },
+  "source": {
+    "repo": "pydantic/pydantic",
+    "sha": "d0ffa0951e47fd7349032e4b2ea9a54dc28fd435"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "pydantic/experimental/pipeline.py",
+        "start_line": 8,
+        "end_line": 14
+      },
+      {
+        "path": "pydantic/experimental/pipeline.py",
+        "start_line": 484,
+        "end_line": 499
+      },
+      {
+        "path": "pydantic/experimental/pipeline.py",
+        "start_line": 504,
+        "end_line": 550
+      },
+      {
+        "path": "pydantic/experimental/pipeline.py",
+        "start_line": 574,
+        "end_line": 590
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/pydantic/pydantic/issues/13507\", \"created_at\": \"2026-07-27T02:12:52Z\", \"license\": \"MIT\", \"why\": \"field trial: closed 'bug V2' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 13516, \"fix_pr_title\": \"Fix application of constraints in pipeline API\", \"fix_commit\": \"60d4c4873e44d587c8d70d7a1c731f7361fe55eb\"}"
+}

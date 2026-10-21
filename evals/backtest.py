@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 IDS = re.compile(r"[A-Za-z0-9_-]+")
 LINE_TOLERANCE = 10
 KINDS = {"bug_analysis", "needs_info", "not_a_bug", "feature_request"}
+UNKNOWN = "unknown"  # an open issue in a field trial: nobody knows the answer yet
 
 
 # --- cases -------------------------------------------------------------------
@@ -81,8 +82,8 @@ def validate_case(case: dict) -> list[str]:
                     if not safe_relative(path):
                         problems.append(f"fixture path {path!r} is not a plain relative path")
     expected = case.get("expected") or {}
-    if expected.get("kind") not in KINDS:
-        problems.append(f"expected.kind must be one of {sorted(KINDS)}")
+    if expected.get("kind") not in KINDS | {UNKNOWN}:
+        problems.append(f"expected.kind must be one of {sorted(KINDS | {UNKNOWN})}")
     for loc in expected.get("locations", []):
         if not (isinstance(loc.get("path"), str) and isinstance(loc.get("start_line"), int) and isinstance(loc.get("end_line"), int)):
             problems.append("each location needs path, start_line, end_line")
@@ -194,7 +195,8 @@ def score_case(case: dict, checked: dict | None, metrics: dict | None, grade: di
     checks = row["checks"]
     row["kind"], row["confidence"] = analysis["kind"], analysis["confidence"]
     row["original_confidence"] = checked.get("original_confidence")
-    checks["kind"] = analysis["kind"] == expected["kind"]
+    if expected["kind"] != UNKNOWN:
+        checks["kind"] = analysis["kind"] == expected["kind"]
     evidence = [e["item"] for e in checked.get("evidence", [])]
     row["evidence_verified"] = len(evidence)
     row["evidence_unverified"] = len(checked.get("unverified", []))
@@ -215,7 +217,7 @@ def score_case(case: dict, checked: dict | None, metrics: dict | None, grade: di
         row["cause_grade"] = grade.get("grade")
         row["cause_reason"] = grade.get("reason")
         checks["cause"] = (grade.get("grade") or 0) >= 1
-    wrong = not checks["kind"] or checks.get("cause") is False
+    wrong = checks.get("kind") is False or checks.get("cause") is False
     checks["overconfident"] = not (analysis["confidence"] == "high" and wrong)
     row["passed"] = all(checks.values())
     return row
@@ -231,6 +233,7 @@ def summarise(rows: list[dict], cases: list[dict]) -> dict:
         "cases": len(rows),
         "passed": sum(r["passed"] for r in rows),
         "kind_correct": sum(bool(r["checks"].get("kind")) for r in rows),
+        "kind_unknown": sum(by_id[r["id"]]["expected"]["kind"] == UNKNOWN for r in rows),
         "location_hit_rate": round(sum(bool(r["checks"].get("location")) for r in bug) / len(bug), 3) if bug else None,
         "file_hit_rate": round(sum(bool(r.get("file_hit")) for r in bug) / len(bug), 3) if bug else None,
         "overconfident": [r["id"] for r in rows if r["checks"].get("overconfident") is False],

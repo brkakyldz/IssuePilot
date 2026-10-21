@@ -1,0 +1,44 @@
+{
+  "id": "vite-23383",
+  "issue": {
+    "number": 23383,
+    "title": "Dependency scan fails with incorrect file path when input contains @ in directory name on Windows",
+    "body": "### Describe the bug\n\nWhen using a multi‑page configuration with `input` (not `rolldownOptions.input`), I always get a dependency scan error. The full error message is:\n\n```\nPS D:\\desk\\test-vite-scan\\test> pnpm exec vite --force --host\ndirPackage D:\\desk\\test-vite-scan\\test\nfileHTML   D:\\desk\\test-vite-scan\\test\\@src\\whatever.html\n14:19:27 [vite] (client) Forced re-optimization of dependencies\n\n  VITE v8.2.2  ready in 195 ms\n\n  ➜  Local:   http://localhost:5173/\n  ➜  press h + enter to show help\n(!) Failed to run dependency scan. Skipping dependency pre-bundling. Error: failed to resolve rolldownOptions.input value: \"D:\\\\desk\\\\test-vite-scan\\\\test@src\\\\whatever.html\".\n    at resolvePath (file:///D:/desk/test-vite-scan/test/node_modules/.pnpm/vite@8.2.2/node_modules/vite/dist/node/chunks/node.js:31472:29)\n    at async Promise.all (index 0)\n    at async computeEntries (file:///D:/desk/test-vite-scan/test/node_modules/.pnpm/vite@8.2.2/node_modules/vite/dist/node/chunks/node.js:31477:41)\n    at async scan (file:///D:/desk/test-vite-scan/test/node_modules/.pnpm/vite@8.2.2/node_modules/vite/dist/node/chunks/node.js:31420:19)\n    at async file:///D:/desk/test-vite-scan/test/node_modules/.pnpm/vite@8.2.2/node_modules/vite/dist/node/chunks/node.js:34462:15\n```\n\n1. I do **not** set `rolldownOptions.input` anywhere in my config – I only set the standard `input` option.\n\n2. The reported path is incorrect: it shows `test@src` (without a backslash between `test` and `@src`), but my actual directory structure is `test\\@src`. The correct full path should be `D:\\desk\\test-vite-scan\\test\\@src\\whatever.html`.\n\n   I did further testing and found that **any directory name that starts with `@`** at any level above the project root triggers this same error. For example, if my project is inside `D:\\some\\@project\\my-app`, the error will show a malformed path missing the backslash before `@project`.\n\n3. My OS is **Windows 11**. This issue cannot be reproduced on StackBlitz.\n\n4. Even if my HTML file doesn't import any JavaScript files, this error still occurs.\n\n### vite.config.js\n````js\nimport { dirname, resolve } from 'path';\nimport { fileURLToPath } from 'url';\n\nimport { defineConfig } from 'vite';\n\n\n\nconst dirPackage = dirname(fileURLToPath(import.meta.url));\nconst fileHTML = resolve(dirPackage, '@src', 'whatever.html');\n\nconsole.log('dirPackage', dirPackage);\nconsole.log('fileHTML  ', fileHTML);\n\nexport default defineConfig(() => {\n\treturn {\n\t\tinput: {\n\t\t\twhatever: fileHTML,\n\t\t},\n\t};\n});\n````\n\n### screenshot\n<img width=\"3840\" height=\"2065\" alt=\"Image\" src=\"https://github.com/user-attachments/assets/3121bb41-e5be-45bd-9a47-9dd0e72fd107\" />\n\n\n### Reproduction\n\nhttps://stackblitz.com/edit/vitejs-vite-kicw9xc5?file=vite.config.js\n\n### Steps to reproduce\n\n_No response_\n\n### System Info\n\n```shell\nSystem:\n    OS: Windows 11 10.0.26200\n    CPU: (16) x64 AMD Ryzen 7 5800X 8-Core Processor             \n    Memory: 37.64 GB / 63.92 GB\n  Binaries:\n    Node: 26.8.1 - e:\\runtime\\node\\node.EXE\n    npm: 11.19.0 - e:\\runtime\\node\\npm.CMD\n    pnpm: 12.0.0 - C:\\Users\\zheung\\AppData\\Roaming\\npm\\pnpm.CMD\n  Browsers:\n    Chrome: 151.0.7922.174\n    Edge: Chromium (146.0.3856.62)\n    Firefox: 145.0.2 - C:\\Program Files\\Mozilla Firefox\\firefox.exe\n  npmPackages:\n    vite: ^8.2.2 => 8.2.2\n```\n\n### Used Package Manager\n\npnpm\n\n### Logs\n\n_No response_\n\n### Validations\n\n- [x] Follow our [Code of Conduct](https://github.com/vitejs/.github/blob/main/CODE_OF_CONDUCT.md)\n- [x] Read the [Contributing Guidelines](https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md).\n- [x] Read the [docs](https://vite.dev/guide).\n- [x] Check that there isn't [already an issue](https://github.com/vitejs/vite/issues) that reports the same bug to avoid creating a duplicate.\n- [x] Make sure this is a Vite issue and not a framework-specific issue. For example, if it's a Vue SFC related bug, it should likely be reported to [vuejs/core](https://github.com/vuejs/core) instead.\n- [x] Check that this is a concrete bug. For Q&A open a [GitHub Discussion](https://github.com/vitejs/vite/discussions) or join our [Discord Chat Server](https://chat.vite.dev/).\n- [x] The provided reproduction is a [minimal reproducible example](https://stackoverflow.com/help/minimal-reproducible-example) of the bug."
+  },
+  "source": {
+    "repo": "vitejs/vite",
+    "sha": "70d56ea1848909edab416934f3f68ce14343eb73"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "packages/vite/src/node/config.ts",
+        "start_line": 23,
+        "end_line": 29
+      },
+      {
+        "path": "packages/vite/src/node/config.ts",
+        "start_line": 959,
+        "end_line": 997
+      },
+      {
+        "path": "packages/vite/src/node/config.ts",
+        "start_line": 1073,
+        "end_line": 1079
+      },
+      {
+        "path": "packages/vite/src/node/config.ts",
+        "start_line": 1919,
+        "end_line": 1925
+      },
+      {
+        "path": "packages/vite/src/node/config.ts",
+        "start_line": 2163,
+        "end_line": 2169
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/vitejs/vite/issues/23383\", \"created_at\": \"2026-08-27T06:38:20Z\", \"license\": \"MIT\", \"why\": \"field trial: closed 'p3-minor-bug' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 23694, \"fix_pr_title\": \"fix: remove input option unescaping for now\", \"fix_commit\": \"facc2fb1fffce03d9e2dd7011d0bd0eeddc7d0f6\"}"
+}

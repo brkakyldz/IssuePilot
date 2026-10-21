@@ -1,0 +1,17 @@
+{
+  "id": "svelte-18374",
+  "issue": {
+    "number": 18374,
+    "title": "Effect scheduled for batch A can be executed by batch B, causing wrong values",
+    "body": "### Describe the bug\n\nThe fix I did in revealed a separate bug: An effect scheduled for batch A can be executed by batch B, causing wrong values. This AFAICT is only possible when microtasks align in a bad way, so it's very unlikely, but it _can_ happen. If you run the test in with `compilerOptions: { dev: false }` (i.e. you omit it in the test; or in the local playground adjust the settings), you see that it ends up with \"0 1\" but it should be \"1 1\". That's because the synchronous batch starts after the async one but flushes effects before the async one can, but after the async one has set the async derived's value. As a result `batch_values` contains \"0\" for the async derived, and the corresponding render effect is already scheduled (the async batch wants to run it), but the sync batch flushes it.\n\n### Reproduction\n\n[playground](https://svelte.dev/playground/hello-world?version=5.56.1#H4sIAAAAAAAACo2QwWrDMBBEf2URhdjYxD07jiG3XnrKsenBkTcgIkuqtE5shP69KG5D4iZQdNrZWTHzPFNNh6xkbyilhrO2soUEW0HYpixnByHRsfLDMxpN9EWB5b9XG2OW7oSSorZvHD7SuVaEihwrWeW4FYbqnQIQndGWYONGxeFgdQeLZXGZfk4Xqxvb9ta1nZskEgywhhdHDWHyml7VcaZWxTVCfNW-J9IKtOJS8OPaJymsa_BDlq2-euzxXXCrqXHHZNo8FGHMsjQNoRaKW-xQUVVMH9c7VU0N_RCgiOOliR-nieWMcCBWku0x5M8w31CZgb7fPEEdQXgYIEQYxmrjkokQ18oRWHS9pLhr0YoTtklzbgTB8AdYZeq91PxYgp-OQlWYf9fYPmux_X-JcV7iLp8fw32Uz5xRI-RZqJaVh0Y6DN_RJva68wIAAA) (only reproduces in local playground when setting dev to false)\n\n### Logs\n\n```shell\n\n```\n\n### System Info\n\n```shell\n.\n```\n\n### Severity\n\nannoyance"
+  },
+  "source": {
+    "repo": "sveltejs/svelte",
+    "sha": "e4bfc5f45af2fb5f5fe3f6ee6169b34a8a9db929"
+  },
+  "expected": {
+    "kind": "unknown"
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/sveltejs/svelte/issues/18374\", \"created_at\": \"2026-06-03T16:14:23Z\", \"license\": \"MIT\", \"why\": \"field trial: open 'bug' issue since 2026-05-21\", \"type\": \"open\"}"
+}

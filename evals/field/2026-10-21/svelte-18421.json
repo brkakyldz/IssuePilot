@@ -1,0 +1,29 @@
+{
+  "id": "svelte-18421",
+  "issue": {
+    "number": 18421,
+    "title": "Nested Transitions Regression",
+    "body": "### Describe the bug\n\n#16035 broke nested transitions, causing regression of #4784 \n\n### Reproduction\n\n[REPL 5.56.3](https://svelte.dev/playground/82b00644720a4ca2bdb89c6a653ec987?version=5.56.3#H4sIAAAAAAAAA5VV227jNhD9lalSdJ2tbTkLbIHKl0XQdIEtenlwt32Ig4IWxw4RihRIKheo-vcOSUm2lWSLNWDYHJ65nxnWiWIFJlnyp0H8S-BDMk52QqJNsus6cU-lv_MCkrfIy7Kc2nuUzsu2zOJL8lwrh8qRmWRhcyNKt9ooEEWpjYPOF-yMLuDNNO0Erf6b-UYRmmxYB47uYAnfWsccjmqSA0i2RZnBJvm8voSR0_u9RCjwfJOMw31-KyQ3qDK4DmeAuv090v0otRGcdTrwol7QPej8wvI7q9W9kBJJEYqnK-aYv9lVCui7SaAZv6z7h5FMcX3s73WfA90rYRU-wd_aSD50MYB-VuIejWUS1q7iQv8PfI3sNbM3x8fXsvpNsEKc6vZ6veyF6v_EpNhpo8TXNWDNFHw0TOXC5s9SO8L9qi1cqj0Sk7-AWrPcEHmV01_OIJyb8zls1CLt6UyHnsm1p2mTkpTI7_DRJZkzFTbjV4ZowPjTSXp--XycoNC8krjq5-QffCyZskKrtZ-U4cikaZik3zXHTzyDAObIYbHVWiJTq5jhMMHDf_c1w9uBaysFx6bFRkDqjI_TUaQR678SCRwiHAPH0t1S_DNofBal0aUdnZ9A-_DpnqMhxvPRoADX3tg0tPoGPnwA345oxBtgxuiHK_2gji10ViOsXT9hufzcmSb46ByWq2G5T7wt4ZvO1LOCVhIO-WehPP_upd4yudwkdc0rw8LN-9msaTaJbwsspFhFQtZnYheqNO0mpelIu9hWzlGAWuVS5HfLehB5E5q4cQFrSQi5ZNaS11ALGoBwzvrKrL47e3z3fvsDxV8GfkTtjasPuTaddJFG96sunBBpV4XmMH71GbL89jQHYDZOfnO8fw7D5cHLOiIiO5Z1JMn3cBGGrreeeuu9mToVu_ZQZygtHqrV5tQ7O6mI0pNQhglJczTUhr4IvaeTIrRGjkG970Ua2rdIK9nOlHuKg0tciMNZMLMXtPT6z2wef9O3oMQj5bxjlXRA7FmBj0mofQYXWIxpSN6m8U0U1k2C6YnfOBkorXB-sEGs44F09DJ4LGwresSc7fRLxjmZnUjcuRDJxfSdwWLu9WmLWjRRTVBDFQ8k7VQrupxY2rV51Dx2zYVlW3qd43X469djVKX6tKytPZG22tAotpEHAT23e6MrxXuhL-l00J-2ii9kMPMZREcwDSotNq-M1eao4v5TakFr1gTXPvBSsqdTiFBSKJxspc7v5sHQYZgn_ewCDW9ho5mje7_I0DgyGYT0-g1iC_uoPpj1iAyMDmv8xxnH_XmrQExrSXT63NzQiQn5QE1Ksh3zjP8PX6JB4uIJAAA) - broken\n[REPL 5.33.9](https://svelte.dev/playground/82b00644720a4ca2bdb89c6a653ec987?version=5.33.9#H4sIAAAAAAAAA5VV227jNhD9lalSdJ2tbTkLbIHKl0XQdIEtenlwt32Ig4IWxw4RihRIKheo-vcOSUm2lWSLNWDYHJ65nxnWiWIFJlnyp0H8S-BDMk52QqJNsus6cU-lv_MCkrfIy7Kc2nuUzsu2zOJL8lwrh8qRmWRhcyNKt9ooEEWpjYPOF-yMLuDNNO0Erf6b-UYRmmxYB47uYAnfWsccjmqSA0i2RZnBJvm8voSR0_u9RCjwfJOMw31-KyQ3qDK4DmeAuv090v0otRGcdTrwol7QPej8wvI7q9W9kBJJEYqnK-aYv9lVCui7SaAZv6z7h5FMcX3s73WfA90rYRU-wd_aSD50MYB-VuIejWUS1q7iQv8PfI3sNbM3x8fXsvpNsEKc6vZ6veyF6v_EpNhpo8TXNWDNFHw0TOXC5s9SO8L9qi1cqj0Sk7-AWrPcEHmV01_OIJyb8zls1CLt6UyHnsm1p2mTkpTI7_DRJZkzFTbjV4ZowPjTSXp--XycoNC8krjq5-QffCyZskKrtZ-U4cikaZik3zXHTzyDAObIYbHVWiJTq5jhMMHDf_c1w9uBaysFx6bFRkDqjI_TUaQR678SCRwiHAPH0t1S_DNofBal0aUdnZ9A-_DpnqMhxvPRoADX3tg0tPoGPnwA345oxBtgxuiHK_2gji10ViOsXT9hufzcmSb46ByWq2G5T7wt4ZvO1LOCVhIO-WehPP_upd4yudwkdc0rw8LN-9msaTaJbwsspFhFQtZnYheqNO0mpelIu9hWzlGAWuVS5HfLehB5E5q4cQFrSQi5ZNaS11ALGoBwzvrKrL47e3z3fvsDxV8GfkTtjasPuTaddJFG96sunBBpV4XmMH71GbL89jQHYDZOfnO8fw7D5cHLOiIiO5Z1JMn3cBGGrreeeuu9mToVu_ZQZygtHqrV5tQ7O6mI0pNQhglJczTUhr4IvaeTIrRGjkG970Ua2rdIK9nOlHuKg0tciMNZMLMXtPT6z2wef9O3oMQj5bxjlXRA7FmBj0mofQYXWIxpSN6m8U0U1k2C6YnfOBkorXB-sEGs44F09DJ4LGwresSc7fRLxjmZnUjcuRDJxfSdwWLu9WmLWjRRTVBDFQ8k7VQrupxY2rV51Dx2zYVlW3qd43X469djVKX6tKytPZG22tAotpEHAT23e6MrxXuhL-l00J-2ii9kMPMZREcwDSotNq-M1eao4v5TakFr1gTXPvBSsqdTiFBSKJxspc7v5sHQYZgn_ewCDW9ho5mje7_I0DgyGYT0-g1iC_uoPpj1iAyMDmv8xxnH_XmrQExrSXT63NzQiQn5QE1Ksh3zjP8PX6JB4uIJAAA) - works\n\n\n### Logs\n\n```shell\n\n```\n\n### System Info\n\n```shell\nREPL\n```\n\n### Severity\n\nannoyance"
+  },
+  "source": {
+    "repo": "sveltejs/svelte",
+    "sha": "c7d8233a5ce70546971413ba84282ba0518a0828"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "packages/svelte/src/internal/client/dom/elements/transitions.js",
+        "start_line": 337,
+        "end_line": 350
+      },
+      {
+        "path": "packages/svelte/src/internal/client/dom/elements/transitions.js",
+        "start_line": 381,
+        "end_line": 479
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/sveltejs/svelte/issues/18421\", \"created_at\": \"2026-06-12T08:03:39Z\", \"license\": \"MIT\", \"why\": \"field trial: closed 'bug' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 18647, \"fix_pr_title\": \"fix: measure nested transitions before applying their starting styles\", \"fix_commit\": \"955b701df2d4c44215844a07a6112462558c2a1e\"}"
+}

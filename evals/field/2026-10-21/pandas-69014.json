@@ -1,0 +1,24 @@
+{
+  "id": "pandas-69014",
+  "issue": {
+    "number": 69014,
+    "title": "BUG: test assert methods failing on object dtype column with lists of different nesting",
+    "body": "When using `assert_series_equal` or `assert_frame_equal` with a Series/DataFrame with an object dtype column with lists of different nesting, I see a failure instead of the correct AssertionError.\n\nFirst, example with unequal flat list (here different length, but could also be different numbers), this works as expected:\n\n```python\n>>> ser1 = pd.Series([1, [1, 2], \"b\"], dtype=object)\n>>> ser2 = pd.Series([1, [1, 2, 3], \"b\"], dtype=object)\n>>> pd.testing.assert_series_equal(ser1, ser2)\n...\nAssertionError: Series are different\n\nSeries values are different (33.33333 %)\n[index]: [0, 1, 2]\n[left]:  [1, [1, 2], b]\n[right]: [1, [1, 2, 3], b]\nAt positional index 1, first diff: [1, 2] != [1, 2, 3]\n```\n\nBut when comparing with a nested list, it fails:\n\n```python\n>>> ser2 = pd.Series([1, [[1, 2]], \"b\"], dtype=object)\n>>> pd.testing.assert_series_equal(ser1, ser2)\n---------------------------------------------------------------------------\nTypeError                                 Traceback (most recent call last)\nCell In[8], line 1\n----> 1 pd.testing.assert_series_equal(ser1, ser2)\n\n    [... skipping hidden 2 frame]\n\nFile pandas/_libs/testing.pyx:66, in pandas._libs.testing.assert_almost_equal()\n\nFile pandas/_libs/testing.pyx:198, in pandas._libs.testing.assert_almost_equal()\n\nFile pandas/_libs/testing.pyx:190, in pandas._libs.testing.assert_almost_equal()\n\nTypeError: unhashable type: 'list'\n```"
+  },
+  "source": {
+    "repo": "pandas-dev/pandas",
+    "sha": "6ae3965911980db4f94dad88885036c1ab14bdb3"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "pandas/_libs/testing.pyx",
+        "start_line": 187,
+        "end_line": 193
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/pandas-dev/pandas/issues/69014\", \"created_at\": \"2026-09-18T12:24:57Z\", \"license\": \"BSD-3-Clause\", \"why\": \"field trial: closed 'Bug' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 69015, \"fix_pr_title\": \"BUG: preserve assertion errors for nested sequence length mismatches\", \"fix_commit\": \"6a2edf9b4047f44658882233008ea8cab9714cbc\"}"
+}

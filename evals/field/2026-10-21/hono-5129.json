@@ -1,0 +1,24 @@
+{
+  "id": "hono-5129",
+  "issue": {
+    "number": 5129,
+    "title": "parseBody() fails with \"Failed to parse body as FormData\" when formData() was read first (regression in 4.12.28)",
+    "body": "### What version of Hono are you using?\n\n4.12.30 (regression introduced in 4.12.28; 4.12.27 works)\n\n### What runtime/platform is your app running on?\n\nNode.js v24.10.0 (reproduced via `app.request()`, so it is runtime-independent)\n\n### What steps can reproduce the bug?\n\nCall `c.req.formData()` first (e.g. in an auth middleware that hashes the raw body to verify a signature), then call `c.req.parseBody()` in the handler:\n\n```ts\nimport { Hono } from \"hono\";\n\nconst app = new Hono();\n\napp.post(\"/upload\", async (c) => {\n  await c.req.formData(); // e.g. middleware verifying a signed body\n  const body = await c.req.parseBody(); // throws on >= 4.12.28\n  return c.json({ gotFile: body.file instanceof File });\n});\n\nconst fd = new FormData();\nfd.append(\"file\", new Blob([\"hello\"], { type: \"text/plain\" }), \"t.txt\");\n\nconst res = await app.request(\"/upload\", { method: \"POST\", body: fd });\nconsole.log(res.status, await res.text());\n```\n\n- hono 4.12.27: `200 {\"gotFile\":true}`\n- hono 4.12.28 / 4.12.29 / 4.12.30: `500`, with `parseBody()` rejecting with `Failed to parse body as FormData.`\n\n### What is the expected behavior?\n\n`parseBody()` reuses the cached form data (as it did up to 4.12.27) and returns the parsed body.\n\n### What do you see instead?\n\n`parseBody()` throws `Failed to parse body as FormData.`, turning the request into a 500.\n\n### Additional information\n\nI believe the regression comes from #5071 (shipped in 4.12.28). The chain:\n\n1. `c.req.formData()` caches `bodyCache.formData` on the `HonoRequest` and consumes the raw stream.\n2. `parseBody()` -> `parseFormData()` in `src/utils/body.ts` now calls `request.arrayBuffer()` instead of `request.formData()`.\n3. `HonoRequest.#cachedBody('arrayBuffer')` finds the cached `formData` entry and re-serializes it with `new Response(formData).arrayBuffer()`. That serialization generates a **fresh random multipart boundary**.\n4. `parseFormData()` then calls `bufferToFormData(arrayBuffer, headers.get('Content-Type'))` using the **original** request header, whose boundary no longer matches the re-serialized bytes, so `response.formData()` rejects.\n\nA possible fix: have `parseFormData()` return early from `request.bodyCache.formData` when it is already populated, and only fall back to the `arrayBuffer()` + `bufferToFormData()` path when it is not.\n\nReal-world impact: any middleware that reads `c.req.formData()` before a handler that uses `c.req.parseBody()` (in our case, an HMAC service-to-service auth middleware that hashes multipart bodies) breaks on upgrade from 4.12.27.\n"
+  },
+  "source": {
+    "repo": "honojs/hono",
+    "sha": "21b44b6db6118fc77fabb49832fc4cadd0ef8ec8"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/utils/body.ts",
+        "start_line": 124,
+        "end_line": 129
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/honojs/hono/issues/5129\", \"created_at\": \"2026-07-17T15:07:49Z\", \"license\": \"MIT\", \"why\": \"field trial: closed 'bug' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 5131, \"fix_pr_title\": \"fix(utils/body): reuse cached formData in `parseBody()`\", \"fix_commit\": \"80959d47d56ac18c2985336ad311917dc56497c5\"}"
+}

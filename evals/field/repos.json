@@ -1,0 +1,14 @@
+{
+  "closed_since": "2025-10-21",
+  "open_since": "2026-05-21",
+  "repos": [
+    {"repo": "Textualize/rich", "bug_label": "bug", "license": "MIT"},
+    {"repo": "pydantic/pydantic", "bug_label": "bug V2", "license": "MIT"},
+    {"repo": "pandas-dev/pandas", "bug_label": "Bug", "license": "BSD-3-Clause"},
+    {"repo": "psf/black", "bug_label": "T: bug", "license": "MIT"},
+    {"repo": "pytest-dev/pytest", "bug_label": "type: bug", "license": "MIT"},
+    {"repo": "honojs/hono", "bug_label": "bug", "license": "MIT"},
+    {"repo": "vitejs/vite", "bug_label": "p3-minor-bug", "license": "MIT"},
+    {"repo": "sveltejs/svelte", "bug_label": "bug", "license": "MIT"}
+  ]
+}

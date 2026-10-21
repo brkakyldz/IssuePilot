@@ -1,0 +1,79 @@
+{
+  "id": "pydantic-13817",
+  "issue": {
+    "number": 13817,
+    "title": "Refcount corruption during GC when a `mode='wrap'` validator's `handler` outlives validation (shared validator tree traversed twice)",
+    "body": "### Initial Checks\n\n- [x] I confirm that I'm using Pydantic V2\n\n### Description\n\nWhen a model has a `model_validator(mode='wrap')` and validation fails inside a nested validator, the `handler` object (`ValidatorCallable`) stays alive as long as the resulting `ValidationError` is alive: the `ValueError` stored in the error `ctx` keeps its traceback, the traceback keeps the field-validator frame, its `f_back` is the wrap-validator frame, and that frame still holds the local `handler`.\n\nIf a garbage collection runs while the handler is alive, CPython's GC visits every Python object owned by the model's validator tree **twice**:\n\n- `SchemaValidator.__traverse__` → `FunctionWrapValidator { validator, func, config }` → the validator tree (`src/validators/function.rs`);\n- `ValidatorCallable.__traverse__` → `InternalValidator { validator, data, context, self_instance }` (`src/validators/generator.rs`, `impl_py_gc_traverse!(InternalValidator { validator, data, context, self_instance })`), where `validator` is an `Arc` clone of the **same** tree.\n\nEach `Py<PyAny>` inside the tree (bound validator methods, model classes, configs) is owned once but visited twice, so `subtract_refs` drives `gc_refs` below zero. On a debug build of CPython this is an immediate abort:\n\n```\nPython/gc.c:94: gc_decref: Assertion \"gc_get_refs(g) > 0\" failed: refcount is too small\nobject type name: ModelMetaclass\nobject repr     : <class '__main__.A'>\nFatal Python error: _PyObject_AssertFailed: _PyObject_AssertFailed\n```\n\nOn a release build the miscounted objects can be treated as unreachable and cleared while still in use, which shows up as random SIGSEGV/SIGABRT later in the process. We hit this in production and CI with django-ninja, whose `Schema` base class installs a `model_validator(mode='wrap')` on every model, so every failed request-body validation triggers it (downstream report: vitalik/django-ninja#1773, workaround PR vitalik/django-ninja#1774).\n\nThe same pattern exists for `ValidatorIterator` (generator validation), which also owns an `InternalValidator` with an `Arc` clone of the item validator tree.\n\nRemoving the extra reference in the wrap validator (`try: return handler(values) finally: del handler`) makes the reproducer pass, which confirms the mechanism. A proper fix is probably to stop traversing `InternalValidator.validator` (the tree is owned and traversed by the `SchemaValidator`), similar to what pydantic/pydantic-core#1125 did for `DefinitionRefValidator`, or to hold a `Py<SchemaValidator>` inside `InternalValidator` so that the ownership is expressed as a real Python reference.\n\nReproduced with pydantic 2.12.5 / pydantic-core 2.41.5 and with pydantic 2.13.5 / pydantic-core 2.46.5, on macOS arm64 and Linux x86_64. Without the `model_validator(mode='wrap')`, or with `del handler` in a `finally` block inside `_run`, the script below prints `ok`.\n\n### Example Code\n\nRun with a debug build of CPython (`--with-pydebug`, e.g. `uv python install 3.13+debug`); `python -X dev` is not enough because the assertion lives in `gc.c`.\n\n```python\nimport gc\nfrom datetime import datetime\n\nfrom pydantic import BaseModel, ValidationError, field_validator, model_validator\n\n\nclass A(BaseModel):\n    created_at: datetime\n\n    @field_validator('created_at')\n    @classmethod\n    def check(cls, v):\n        raise ValueError('bad')\n\n    @model_validator(mode='wrap')\n    @classmethod\n    def _run(cls, values, handler, info):\n        return handler(values)\n\n\nkept = []\nfor _ in range(5):\n    try:\n        A(created_at='2020-01-01T00:00:00')\n    except ValidationError as e:\n        kept.append(e)  # keeps the ValueError and its traceback alive\n    gc.collect()  # aborts on the first iteration\nprint('ok')\n```\n\nA variant that does not need a debug build: keep the `ValidationError`, call `gc.collect()` and look for live `ValidatorCallable` objects in `gc.get_objects()` — one stays alive for as long as the error does.\n\n### Python, Pydantic & OS Version\n\n```\n             pydantic version: 2.12.5\n        pydantic-core version: 2.41.5\n          pydantic-core build: profile=release pgo=false\n               python version: 3.13.9 (main, Oct 31 2025, 23:03:53) [Clang 21.1.4 ]\n                     platform: macOS-26.3.1-arm64-arm-64bit-Mach-O\n             related packages: typing_extensions-4.16.0\n                       commit: unknown\n```\n\nCPython 3.13.9 debug build (`uv python install 3.13+debug`), pydantic-core built from the sdist for the debug ABI. Also reproduced on Linux x86_64 and with pydantic-core built from source with pyo3 0.26.0.\n"
+  },
+  "source": {
+    "repo": "pydantic/pydantic",
+    "sha": "44d5e1e8fc8198ecd0083a00a05e099aba0423ab"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "pydantic-core/src/definitions.rs",
+        "start_line": 109,
+        "end_line": 123
+      },
+      {
+        "path": "pydantic-core/src/py_gc.rs",
+        "start_line": 50,
+        "end_line": 55
+      },
+      {
+        "path": "pydantic-core/src/serializers/type_serializers/function.rs",
+        "start_line": 433,
+        "end_line": 442
+      },
+      {
+        "path": "pydantic-core/src/serializers/type_serializers/function.rs",
+        "start_line": 446,
+        "end_line": 452
+      },
+      {
+        "path": "pydantic-core/src/serializers/type_serializers/function.rs",
+        "start_line": 456,
+        "end_line": 465
+      },
+      {
+        "path": "pydantic-core/src/serializers/type_serializers/function.rs",
+        "start_line": 589,
+        "end_line": 595
+      },
+      {
+        "path": "pydantic-core/src/serializers/type_serializers/function.rs",
+        "start_line": 599,
+        "end_line": 608
+      },
+      {
+        "path": "pydantic-core/src/serializers/type_serializers/generator.rs",
+        "start_line": 139,
+        "end_line": 149
+      },
+      {
+        "path": "pydantic-core/src/serializers/type_serializers/generator.rs",
+        "start_line": 160,
+        "end_line": 166
+      },
+      {
+        "path": "pydantic-core/src/serializers/type_serializers/generator.rs",
+        "start_line": 170,
+        "end_line": 179
+      },
+      {
+        "path": "pydantic-core/src/validators/function.rs",
+        "start_line": 550,
+        "end_line": 567
+      },
+      {
+        "path": "pydantic-core/src/validators/generator.rs",
+        "start_line": 363,
+        "end_line": 370
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/pydantic/pydantic/issues/13817\", \"created_at\": \"2026-09-16T15:14:16Z\", \"license\": \"MIT\", \"why\": \"field trial: closed 'bug V2' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 13819, \"fix_pr_title\": \"Fix various issues about GC tracking in `pydantic-core`\", \"fix_commit\": \"88e964a1f01967ec2d46d9da7f9ffc4016df4cb8\"}"
+}

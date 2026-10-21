@@ -95,6 +95,17 @@ def test_needs_info_must_not_offer_a_fix(tmp_path):
     assert row["checks"]["kind"] and row["checks"]["no_fix"] is False and not row["passed"]
 
 
+def test_open_issue_has_no_kind_check(tmp_path):
+    case = {**FIXTURE_CASE, "expected": {"kind": "unknown"}}
+    assert backtest.validate_case(case) == []
+    repo = tmp_path / "repo"
+    backtest.build_fixture(case, repo)
+    (tmp_path / "a.json").write_text(json.dumps(analysis(kind="not_a_bug")), encoding="utf-8")
+    row = backtest.score_case(case, check_file(tmp_path / "a.json", repo), {})
+    assert row["checks"] == {"overconfident": True} and row["passed"]
+    assert backtest.summarise([row], [case])["kind_unknown"] == 1
+
+
 def test_missing_analysis_fails_the_case():
     row = backtest.score_case(FIXTURE_CASE, {"analysis": None}, None)
     assert not row["passed"] and row["error"] == "no analysis"

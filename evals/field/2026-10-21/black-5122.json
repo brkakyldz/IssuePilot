@@ -1,0 +1,29 @@
+{
+  "id": "black-5122",
+  "issue": {
+    "number": 5122,
+    "title": "Fail to parse multiline `case` statement with `# fmt: skip`",
+    "body": "**Describe the bug**\n\nParsing a multiline `case` statement with `# fmt: skip` fails with black >= 26.\n\n**To Reproduce**\n\n<!--\nMinimal steps to reproduce the behavior with source code and Black's configuration.\n-->\n\nFor example, take this code:\n\n```python\n# file.py\nmatch (method, *path.split(\"/\")):\n\n    case (\"GET\", \"parent\", _, \"resource\", resource_id) \\\n            | (\"GET\", \"resource\", resource_id):  # fmt: skip\n        pass\n\n    case _:\n        pass\n```\n\nAnd run it with these arguments:\n\n```sh\n$ black file.py\n```\n\nThe resulting error is:\n\n> error: cannot format file.py: Cannot parse: 6:42:         | (\"GET\", \"resource\", resource_id):  # fmt: skip\n\n**Expected behavior**\n\nThe multi-line `case` statement remains unchanged.\n\n**Environment**\n\n<!-- Please complete the following information: -->\n\n- Black's version: 26.1.0 and up (no issue with 25.12.0).\n- OS and Python version: [Windows/Python 3.13.2] -->\n\n"
+  },
+  "source": {
+    "repo": "psf/black",
+    "sha": "aef52e00c618f8203548fa6d1512eb49bf60f411"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/black/comments.py",
+        "start_line": 669,
+        "end_line": 675
+      },
+      {
+        "path": "src/black/comments.py",
+        "start_line": 775,
+        "end_line": 801
+      }
+    ]
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/psf/black/issues/5122\", \"created_at\": \"2026-05-04T19:27:22Z\", \"license\": \"MIT\", \"why\": \"field trial: closed 'T: bug' issue since 2025-10-21\", \"type\": \"closed\", \"fix_pr\": 5117, \"fix_pr_title\": \"Preserve multiline headers with fmt skip\", \"fix_commit\": \"2b13ea76fa69d4923381df65deb1a5c896ca27ad\"}"
+}

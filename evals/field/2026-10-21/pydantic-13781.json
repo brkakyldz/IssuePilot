@@ -1,0 +1,17 @@
+{
+  "id": "pydantic-13781",
+  "issue": {
+    "number": 13781,
+    "title": "Type alias to `None` (or `MISSING`) not supported as a discriminated union member",
+    "body": "### Initial Checks\n\n- [x] I confirm that I'm using Pydantic V2\n\n### Description\n\nUsing a `None` type alias as a member of a discriminated union fails during schema construction with `TypeError: The core schema type 'none' is not a valid discriminated union variant.`. The alias generates a `'none'` core schema reached through a `'definition-ref'`, and while `_handle_choice()` handles `'none'` choices (by wrapping the tagged union in a `'nullable'` schema), `_infer_discriminator_values_for_choice()` (which is what resolves `'definition-ref'` choices) doesn't.\n\nOnce https://github.com/pydantic/pydantic/pull/13779 lands, the same applies to a type alias to the `MISSING` sentinel (a schema-less `'missing-sentinel'` schema reached through a `'definition-ref'`, see [this review comment](https://github.com/pydantic/pydantic/pull/13779#discussion_r3965416688)).\n\n### Example Code\n\n```python\nfrom typing import Annotated, Literal\n\nfrom typing_extensions import TypeAliasType\n\nfrom pydantic import BaseModel, Field\n\n\nclass Cat(BaseModel):\n    kind: Literal['cat']\n\n\nclass Dog(BaseModel):\n    kind: Literal['dog']\n\n\nNoneAlias = TypeAliasType('NoneAlias', None)\n\n\nclass Model(BaseModel):\n    pet: Annotated[NoneAlias | Cat | Dog, Field(discriminator='kind')] = None\n#> TypeError: The core schema type 'none' is not a valid discriminated union variant.\n```\n"
+  },
+  "source": {
+    "repo": "pydantic/pydantic",
+    "sha": "1c8a330acc3077e77da64e3672c7c875fb4c6eaa"
+  },
+  "expected": {
+    "kind": "unknown"
+  },
+  "acceptance": [],
+  "notes": "{\"url\": \"https://github.com/pydantic/pydantic/issues/13781\", \"created_at\": \"2026-09-09T07:01:15Z\", \"license\": \"MIT\", \"why\": \"field trial: open 'bug V2' issue since 2026-05-21\", \"type\": \"open\"}"
+}
