@@ -12,7 +12,7 @@ the scoring and the M3 acceptance IDs are in
 Run all cases on a branch and grade causes with a separate model:
 
 ```bash
-python evals/backtest.py run --suite evals/cases --ref my-branch --judge opus --out C:/scratch/backtest-my-branch
+python evals/backtest.py run --suite evals/cases --ref my-branch --judge opus --out .backtest-my-branch
 ```
 
 Running needs the `CLAUDE_CODE_OAUTH_TOKEN` secret on this repository; each case
