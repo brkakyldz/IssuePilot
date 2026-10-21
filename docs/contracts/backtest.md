@@ -42,7 +42,7 @@ implementation).
     agent investigates the last commit and sees the whole history (`git log`,
     `git blame`). Author and dates are fixed by the harness.
 - `expected` (all fields optional except `kind`):
-  - `kind`: `bug_analysis`, `needs_info` or `not_a_bug`.
+  - `kind`: `bug_analysis`, `needs_info`, `not_a_bug` or `feature_request`.
   - `locations`: line ranges in the investigated commit that a correct analysis points
     at. For real cases: the lines the actual fix changed (tests excluded).
   - `cause`: one sentence, the real cause; graded by the judge (below).

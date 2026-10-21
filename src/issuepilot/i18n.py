@@ -12,6 +12,7 @@ EN = {
         "bug_analysis": "Bug analysis",
         "needs_info": "More information needed",
         "not_a_bug": "Looks like intended behaviour",
+        "feature_request": "Feature request",
     },
     "confidence": {"high": "high", "medium": "medium", "low": "low"},
     "unverified_reason": {
@@ -83,6 +84,7 @@ TR = {
         "bug_analysis": "Hata analizi",
         "needs_info": "Daha fazla bilgi gerekiyor",
         "not_a_bug": "Beklenen davranış gibi görünüyor",
+        "feature_request": "Özellik isteği",
     },
     "confidence": {"high": "yüksek", "medium": "orta", "low": "düşük"},
     "unverified_reason": {

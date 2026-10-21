@@ -29,7 +29,7 @@ from xml.sax.saxutils import escape, quoteattr
 ROOT = Path(__file__).resolve().parent.parent
 IDS = re.compile(r"[A-Za-z0-9_-]+")
 LINE_TOLERANCE = 10
-KINDS = {"bug_analysis", "needs_info", "not_a_bug"}
+KINDS = {"bug_analysis", "needs_info", "not_a_bug", "feature_request"}
 
 
 # --- cases -------------------------------------------------------------------

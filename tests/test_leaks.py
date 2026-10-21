@@ -28,7 +28,7 @@ def test_the_canary_is_caught():
     assert find_leaks("value is issuepilot-canary-99", canary) == []
 
 
-def run_publish(monkeypatch, analysis: dict, run_id: str = "777") -> tuple[int, FakeGh]:
+def run_publish(monkeypatch, analysis: dict, run_id: str = "777", summary=None) -> tuple[int, FakeGh]:
     gh = FakeGh()
     monkeypatch.setattr(publish, "GitHub", lambda repo: GitHub(repo, gh))
     for key, value in {
@@ -39,6 +39,8 @@ def run_publish(monkeypatch, analysis: dict, run_id: str = "777") -> tuple[int, 
     }.items():
         monkeypatch.setenv(key, value)
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    if summary is not None:
+        monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
     return publish.main(), gh
 
 
@@ -51,6 +53,15 @@ def test_clean_analysis_is_published(monkeypatch):
     code, gh = run_publish(monkeypatch, analysis)
     assert code == 0
     assert "Hata analizi" in posted_body(gh)
+
+
+def test_feature_request_posts_no_comment(monkeypatch, tmp_path):
+    analysis = json.loads((FIXTURES / "v2_issue2_analysis.json").read_text(encoding="utf-8"))
+    analysis.update(kind="feature_request", headline="Asks for a CSV export.", evidence=[], suggested_fixes=[])
+    summary_file = tmp_path / "summary.md"
+    code, gh = run_publish(monkeypatch, analysis, summary=summary_file)
+    assert code == 0 and gh.calls == []
+    assert "no comment posted" in summary_file.read_text(encoding="utf-8")
 
 
 def test_injected_canary_blocks_publication(monkeypatch):

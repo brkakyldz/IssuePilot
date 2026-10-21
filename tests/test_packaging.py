@@ -123,3 +123,32 @@ def test_analysis_is_recovered_from_the_transcript_when_the_action_drops_it(tmp_
     assert json.loads(out) == {"kind": "needs_info"}
     transcript.write_text(json.dumps([{"type": "result", "structured_output": None}]))
     assert subprocess.run(["jq", "-c", expr, str(transcript)], capture_output=True, text=True).stdout.strip() == ""
+
+
+def _gate(event: str, labels: list, author: str = "User", skip: str = "enhancement,feature,epic") -> str:
+    import json
+    import os
+    import shutil
+    import subprocess
+    import tempfile
+
+    if not shutil.which("bash") or not shutil.which("jq"):
+        pytest.skip("needs bash and jq")
+    script = WORKFLOW.split("        run: |\n", 1)[1].split("\n\n  investigate:", 1)[0]
+    script = "\n".join(line[10:] for line in script.splitlines())
+    with tempfile.TemporaryDirectory() as tmp:
+        out = os.path.join(tmp, "out")
+        env = {**os.environ, "EVENT": event, "AUTHOR_TYPE": author, "LABELS": json.dumps(labels),
+               "SKIP_LABELS": skip, "GITHUB_OUTPUT": out, "GITHUB_STEP_SUMMARY": os.path.join(tmp, "s")}
+        subprocess.run(["bash", "-c", script], env=env, check=True)
+        return open(out).read().strip()
+
+
+def test_gate_skips_bots_and_skip_labels_before_any_ai_runs():
+    assert _gate("issues", ["bug"]) == "run=true"
+    assert _gate("issues", []) == "run=true"
+    assert _gate("issues", ["Feature", "area:web"]) == "run=false"
+    assert _gate("issues", ["issuepilot:skip"]) == "run=false"
+    assert _gate("issues", ["bug"], author="Bot") == "run=false"
+    assert _gate("issues", ["question"], skip="question, help wanted") == "run=false"
+    assert _gate("workflow_dispatch", ["feature"]) == "run=true"
