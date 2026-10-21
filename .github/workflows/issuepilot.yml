@@ -109,7 +109,7 @@ jobs:
 
       - name: Investigate
         id: investigate
-        uses: brkakyldz/IssuePilot/actions/investigate@main
+        uses: brkakyldz/IssuePilot/actions/investigate@v1.3.0
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           issue_number: ${{ env.ISSUE_NUMBER }}
@@ -145,7 +145,7 @@ jobs:
           persist-credentials: false
 
       - name: Verify, render and publish
-        uses: brkakyldz/IssuePilot/actions/publish@main
+        uses: brkakyldz/IssuePilot/actions/publish@v1.3.0
         with:
           issue_number: ${{ inputs.issue_number || github.event.issue.number }}
           analysis: ${{ needs.investigate.outputs.analysis }}
