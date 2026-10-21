@@ -1,0 +1,27 @@
+{
+  "id": "archdrawer-dotdot-prefixed-file-reported-missing",
+  "issue": {
+    "number": 903,
+    "title": "validate says a file in a folder named \"..config\" does not exist, although it does",
+    "body": "My drawing lists `..config/app.yml` in a component's `files`. The file exists in the repository (the folder is literally named `..config`), and the path is repository-relative (it has no `..` segment), so validation accepts its form. But `archdrawer validate` reports it as missing and fails. The editor's `check-files` also marks such paths (`..env`, `..config/app.yml`) as missing. I expected an existing file to pass.\n\nReproduction:\n```\nmkdir -p repo/.git repo/..config && echo x > repo/..config/app.yml\n# repo/arch.archdraw.json: the bundled example with facts.components[0].files = [\"..config/app.yml\"]\narchdrawer validate repo/arch.archdraw.json\n```\nOutput:\n```\nERROR facts.components[0].files[0]: \"..config/app.yml\" does not exist in the repository\n1 error(s)\n```\n(exit 1). In a repository holding `..env` and `src/app.ts`, `POST /api/diagrams/<id>/check-files` with `{\"files\": [\"..env\", \"src/app.ts\", \"nope.ts\"]}` answers `{\"missing\":[\"..env\",\"nope.ts\"]}`."
+  },
+  "source": {
+    "repo": "brkakyldz/ArchDrawer",
+    "sha": "bcaabc40f417499f3b611ba5efeaa4ed1bf741b4"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/server/files.ts",
+        "start_line": 29,
+        "end_line": 32
+      }
+    ],
+    "cause": "The `within` helper of repoFileChecker in src/server/files.ts treats any relative path whose text starts with \"..\" as outside the root (`r.startsWith(\"..\")`), which also rejects names like `..env` or `..config/…` that are inside it."
+  },
+  "acceptance": [
+    "M5"
+  ],
+  "notes": "{\"origin\": \"M5 real use: a genuine defect found in ArchDrawer at this commit and reproduced; replayed, not filed\", \"proof\": \"tsx p8.mts -> 'ERROR facts.components[0].files[0]: \\\"..config/app.yml\\\" does not exist in the repository' / '1 error(s)' / 'exit 1' (ls -a dotrepo/..config shows app.yml); ../archdrawer/node_modules/.bin/tsx p5.mts -> 'check-files: 200 {\\\"missing\\\":[\\\"..env\\\",\\\"nope.ts\\\"]}'; ../archdrawer/node_modules/.bin/tsx p1.ts -> '..data/x\"}"
+}

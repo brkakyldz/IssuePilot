@@ -1,0 +1,32 @@
+{
+  "id": "archdrawer-post-invalid-part-id-extra-warnings",
+  "issue": {
+    "number": 902,
+    "title": "A post with one oddly named part lists a rename warning for every connection too",
+    "body": "The engine's answer for a post named a part `api gateway` (with a space). The post's warnings listed three renames: the part, plus one for each of the two connections touching it, although the engine never writes connection ids. With two long but valid part ids (40 characters each), the post gets a rename warning even though nothing was invalid. I expected exactly one warning for the one repaired id, as the drawing contract says (\"an invalid id is sanitised, with one warning\").\n\nReproduction (story intent of a post): parts `web`, `api gateway`, `db` on the spine; connections web -> api gateway (step 1) and api gateway -> db (step 2).\n\nWarnings:\n```\nRenamed the post's id \"api gateway\" to \"api-gateway\": ids use letters, digits, - and _\nRenamed the post's id \"web-api gateway\" to \"web-api-gateway\": ids use letters, digits, - and _\nRenamed the post's id \"api gateway-db\" to \"api-gateway-db\": ids use letters, digits, - and _\n```\nSecond case: parts `xxxx…x` and `yyyy…y` (40 characters each, valid ids) with one connection between them:\n```\nRenamed the post's id \"xxx…x-yyy…y\" to \"xxx…x-yyyyyyyyyyyyyyyyyyy\": ids use letters, digits, - and _\n```"
+  },
+  "source": {
+    "repo": "brkakyldz/ArchDrawer",
+    "sha": "bcaabc40f417499f3b611ba5efeaa4ed1bf741b4"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/core/intent.ts",
+        "start_line": 200,
+        "end_line": 207
+      },
+      {
+        "path": "src/core/intent.ts",
+        "start_line": 247,
+        "end_line": 247
+      }
+    ],
+    "cause": "intentToDocument in src/core/intent.ts builds each connection id from the raw intent ids (`${e.from}-${e.to}`) instead of the already mapped part ids, and passes it through the same `fresh` helper that warns on any sanitising or cut to 60 characters."
+  },
+  "acceptance": [
+    "M5"
+  ],
+  "notes": "{\"origin\": \"M5 real use: a genuine defect found in ArchDrawer at this commit and reproduced; replayed, not filed\", \"proof\": \"tsx S_intent.mts -> A warnings: three 'Renamed the post's id' lines (\\\"api gateway\\\", \\\"web-api gateway\\\", \\\"api gateway-db\\\"); A edge ids: [ 'web-api-gateway', 'api-gateway-db' ]; B warnings: one 'Renamed the post's id' line from the 81-character \\\"xxxx(40)-yyyy(40)\\\" to a 60-character id, for a connection id the engine never w\"}"
+}

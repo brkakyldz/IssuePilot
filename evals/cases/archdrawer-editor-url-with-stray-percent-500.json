@@ -1,0 +1,27 @@
+{
+  "id": "archdrawer-editor-url-with-stray-percent-500",
+  "issue": {
+    "number": 905,
+    "title": "Opening an editor URL with a stray % returns \"Internal Server Error\" instead of the app",
+    "body": "I visited an editor address containing a lone or malformed percent sign, e.g. `http://127.0.0.1:4317/d/50%` or `http://127.0.0.1:4317/d/%E0%A4%A`. The page shows a plain `Internal Server Error` (HTTP 500), and the server logs `URIError: URI malformed`. The API contract says every non-API path returns the web client's `index.html`. A well-formed path such as `/d/50%25` does return it.\n\nReproduction (server running on 4317):\n```\ncurl -i -H \"Host: 127.0.0.1:4317\" http://127.0.0.1:4317/d/50%\n```\nActual: `500 text/plain; charset=UTF-8 Internal Server Error`, and the server log shows `URIError: URI malformed at decodeURIComponent`.\nExpected: `200 text/html` with the editor page."
+  },
+  "source": {
+    "repo": "brkakyldz/ArchDrawer",
+    "sha": "bcaabc40f417499f3b611ba5efeaa4ed1bf741b4"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/server/app.ts",
+        "start_line": 344,
+        "end_line": 354
+      }
+    ],
+    "cause": "The catch-all static route in createApp (src/server/app.ts) calls decodeURIComponent on the request path without handling the URIError it throws for malformed percent-encoding."
+  },
+  "acceptance": [
+    "M5"
+  ],
+  "notes": "{\"origin\": \"M5 real use: a genuine defect found in ArchDrawer at this commit and reproduced; replayed, not filed\", \"proof\": \"tsx p5.mts -> 'GET /d/50%25 -> 200 text/html'; then 'URIError: URI malformed at decodeURIComponent (app.ts:345:18)' and 'GET /d/50% -> 500 text/plain; charset=UTF-8 Internal Server Error'; the same for '/d/%E0%A4%A'\"}"
+}

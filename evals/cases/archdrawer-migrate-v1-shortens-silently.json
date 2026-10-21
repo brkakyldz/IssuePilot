@@ -1,0 +1,47 @@
+{
+  "id": "archdrawer-migrate-v1-shortens-silently",
+  "issue": {
+    "number": 904,
+    "title": "Migrating an archdraw/diagram@1 file cuts long tech lines and zone names without any warning",
+    "body": "I ran `archdrawer migrate` on an old `archdraw/diagram@1` file. A component's `tech` text (80 characters) and a zone label (65 characters) were cut to 60 and 48 characters with an ellipsis, but the command printed no warning about either. The drawing contract for reading @1 says over-long text is shortened and that every change other than a plain rename adds one warning. Long component labels and connection labels do get a warning.\n\nReproduction file `v1-long.archdraw.json`:\n```json\n{ \"schema\": \"archdraw/diagram@1\", \"id\": \"d_v1sample01\", \"title\": \"Shop\", \"subtitle\": \"How an order flows\",\n  \"nodes\": [{ \"id\": \"api\", \"label\": \"API\", \"kind\": \"service\", \"tech\": \"Node.js 20 with Express, Zod validation, Prisma ORM and a Redis cache layer\", \"description\": \"Takes orders\", \"group\": \"backend\", \"files\": [], \"x\": 40, \"y\": 80 }],\n  \"groups\": [{ \"id\": \"backend\", \"label\": \"Backend services running in the primary AWS region (eu-central-1)\", \"parent\": null, \"x\": 20, \"y\": 20, \"w\": 300, \"h\": 200 }],\n  \"edges\": [], \"notes\": [] }\n```\n`archdrawer migrate v1-long.archdraw.json` prints:\n```\nZone \"backend\" became a group component\nConverted from archdraw/diagram@2\nmigrated\n```\nThe written file has `backend` label `\"Backend services running in the primary AWS reg…\"` and `api` sub `\"Node.js 20 with Express, Zod validation, Prisma ORM and a R…\"`. An over-long title, subtitle or note text is also cut without a warning."
+  },
+  "source": {
+    "repo": "brkakyldz/ArchDrawer",
+    "sha": "bcaabc40f417499f3b611ba5efeaa4ed1bf741b4"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/core/migrate.ts",
+        "start_line": 27,
+        "end_line": 27
+      },
+      {
+        "path": "src/core/migrate.ts",
+        "start_line": 32,
+        "end_line": 32
+      },
+      {
+        "path": "src/core/migrate.ts",
+        "start_line": 45,
+        "end_line": 45
+      },
+      {
+        "path": "src/core/migrate.ts",
+        "start_line": 82,
+        "end_line": 82
+      },
+      {
+        "path": "src/core/migrate.ts",
+        "start_line": 85,
+        "end_line": 85
+      }
+    ],
+    "cause": "migrateV1 in src/core/migrate.ts applies `clip` to the title, group labels, `tech`, the subtitle and note texts without pushing a warning, unlike its component-label and connection-label branches."
+  },
+  "acceptance": [
+    "M5"
+  ],
+  "notes": "{\"origin\": \"M5 real use: a genuine defect found in ArchDrawer at this commit and reproduced; replayed, not filed\", \"proof\": \"tsx p6.mts -> 'Zone \\\"backend\\\" became a group component' / 'Converted from archdraw/diagram@2' / 'migrated' / 'exit 0' / 'backend label: \\\"Backend services running in the primary AWS reg…\\\" sub: \\\"\\\"' / 'api label: \\\"API\\\" sub: \\\"Node.js 20 with Express, Zod validation, Prisma ORM and a R…\\\"'\"}"
+}

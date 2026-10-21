@@ -1,0 +1,37 @@
+{
+  "id": "archdrawer-group-frame-overlaps-neighbour",
+  "issue": {
+    "number": 901,
+    "title": "A zone with a long name is drawn shifted right and covers the next part",
+    "body": "I had an overview with a zone (group) whose name is wider than its only member, followed on the main path by a top-level card. After layout the zone's frame is drawn shifted to the right and runs over the next card, so that card looks as if it sits inside the zone. I expected the layout to keep the 88 px gap between the zone and the card, as it does when the zone name is short.\n\nReproduction (overview view, no positions, laid out as `archdrawer open` lays it out):\n- group `g` labelled \"A very long zone name that is much wider than its one member\"\n- card `a` with parent `g`\n- top-level card `b`\n- connection a -> b with step 1\n\nBoxes after layout:\n```\na {\"x\":191,\"y\":86,\"w\":196,\"h\":108}\ng {\"x\":173,\"y\":40,\"w\":498,\"h\":172}\nb {\"x\":626,\"y\":72,\"w\":196,\"h\":108}\ng overlaps b: true\ngap g->b: -45\n```\nThe zone's right edge is at 671 while `b` starts at 626."
+  },
+  "source": {
+    "repo": "brkakyldz/ArchDrawer",
+    "sha": "bcaabc40f417499f3b611ba5efeaa4ed1bf741b4"
+  },
+  "expected": {
+    "kind": "bug_analysis",
+    "locations": [
+      {
+        "path": "src/core/layout.ts",
+        "start_line": 413,
+        "end_line": 417
+      },
+      {
+        "path": "src/core/geometry.ts",
+        "start_line": 150,
+        "end_line": 156
+      },
+      {
+        "path": "src/core/layout.ts",
+        "start_line": 478,
+        "end_line": 480
+      }
+    ],
+    "cause": "The `place` step of gridPositions in src/core/layout.ts shifts a group's children right by `extra` to centre them under a wide header, but layoutRects in src/core/geometry.ts always anchors the group box at its leftmost child minus 18 px, so the stored and drawn group box moves right by `extra` past the room the layout reserved."
+  },
+  "acceptance": [
+    "M5"
+  ],
+  "notes": "{\"origin\": \"M5 real use: a genuine defect found in ArchDrawer at this commit and reproduced; replayed, not filed\", \"proof\": \"tsx L_header.mts -> a {\\\"x\\\":191,\\\"y\\\":86,\\\"w\\\":196,\\\"h\\\":108} / g {\\\"x\\\":173,\\\"y\\\":40,\\\"w\\\":498,\\\"h\\\":172} / b {\\\"x\\\":626,\\\"y\\\":72,\\\"w\\\":196,\\\"h\\\":108} / header width of g: 498 / g overlaps b: true / gap g→b: -45\"}"
+}
