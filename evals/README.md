@@ -7,6 +7,8 @@ the scoring and the M3 acceptance IDs are in
 
 - `cases/` — real closed issues replayed at the commit before their fix, plus fixtures.
 - `backtest.py` — plan, run, score, and build a case from GitHub (`--help`).
+- `field.py`, `field/` — field trials on real issues of well-known repositories, each
+  comment reviewed by a separate model (`--help`).
 - Results of measured runs: `docs/runs/`.
 
 Run all cases on a branch and grade causes with a separate model:

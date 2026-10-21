@@ -5,6 +5,26 @@ callers pinned to `@v1` receive every 1.x release.
 
 ## [Unreleased]
 
+Measured on 20 real issues from pydantic, pandas, black, pytest, hono, vite and svelte
+(field trial, `docs/runs/2026-10-21_field-trial-1.md`).
+
+### Changed
+- When the reporter has already explained the cause, the comment says whether the
+  code confirms it and adds what they did not cover (other callers, sibling sites,
+  risks of their fix) instead of restating it.
+- The investigation checks before it writes: an exact error text across the whole
+  repository, the whole function it blames, a traceback's own version, every caller of
+  the code a fix changes, and assumptions one read would settle. The first result is
+  sent back once with that checklist while tool budget remains.
+- No claim that code is absent or external without a search that ran; a bisected
+  regression is analysed from the culprit's diff instead of asking for more information.
+- The comment no longer repeats the suggested fix below the Suggestion line, numbered
+  explanation steps render as a list, and long lines are cut at a sentence end.
+
+### Fixed
+- An apostrophe in the analysis schema would have stopped Claude Code from starting;
+  a test now guards the quoted `--json-schema` argument.
+
 ## [1.2.0] - 2026-10-21
 
 ### Fixed

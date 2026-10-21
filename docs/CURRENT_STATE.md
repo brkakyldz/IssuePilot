@@ -2,7 +2,7 @@
 project_id: issuepilot
 implementation_agent: claude-code
 branch: main
-as_of: ee4c20c
+as_of: 5a95aae
 active_milestone: none
 active_run: none
 ---
@@ -19,6 +19,7 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
 | M3 Investigation quality | PASS | `docs/runs/2026-10-21_m3-investigation-quality.md` | bccdd8d |
 | M4 Packaging and v1 | PASS | release v1.0.0; `docs/runs/2026-10-21_m3-to-m5.md` | 64a6cef |
 | M5 Real use | PASS | `docs/runs/2026-10-21_m5-real-use.md` | ee4c20c |
+| Field trial on real issues of well-known repositories | DONE | `docs/runs/2026-10-21_field-trial-1.md`, `docs/runs/2026-10-22_field-trial-2.md` | 5a95aae |
 
 ## What exists
 
@@ -31,11 +32,13 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
   needs_info, not_a_bug, feature_request).
 - `src/issuepilot/`: verify, render (English and Turkish), failure, leaks, github,
   check.
-- `evals/` with 23 cases (5 are genuine ArchDrawer defects), `tests/acceptance/holdout/` with 10 locked scenarios,
+- `evals/` with 23 cases (5 are genuine ArchDrawer defects) and the field-trial harness
+  (`evals/field.py`, 20 real issues in `evals/field/2026-10-21/`), `tests/acceptance/holdout/` with 10 locked scenarios,
   `.github/workflows/backtest.yml`; CI runs pytest and actionlint.
 - `security/`: capability probe, injection issue, end-to-end self-test.
 - Releases v1.0.0, v1.1.0 and v1.2.0. Sandbox `brkakyldz/issuepilot-sandbox` calls `@main`
-  (and `@v1` by hand); brkakyldz/ArchDrawer calls `@v1`, which points at v1.1.0.
+  (and `@v1` by hand); brkakyldz/ArchDrawer and the ai-research-agent repository call `@v1`, which points at v1.2.0.
+  The field-trial changes are on `main` but not in a release yet (CHANGELOG Unreleased).
 
 ## Open gates
 
@@ -53,6 +56,7 @@ None.
 
 ## Next
 
-Read IssuePilot's comments on the next problem reports opened in
-ArchDrawer. Known weak spots are in the M3 report; six genuine ArchDrawer defects are
-listed in the M5 report.
+Release the field-trial changes as v1.3.0 and move `v1` (owner approval for the tag
+move). Then the weak spots listed in `docs/runs/2026-10-22_field-trial-2.md`, first the
+repository's top-level layout in the prompt; measure with a new field-trial round on
+fresh issues, not the 20 used to make the changes.
