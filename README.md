@@ -3,13 +3,15 @@
 </p>
 
 <p align="center">
-  <img alt="Release v1.0.0" src="https://img.shields.io/badge/release-v1.0.0-5D768B?style=flat-square&labelColor=2E3E4C">
+  <a href="https://github.com/brkakyldz/IssuePilot/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/brkakyldz/IssuePilot?style=flat-square&color=5D768B&labelColor=2E3E4C"></a>
+  <a href="https://github.com/brkakyldz/IssuePilot/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brkakyldz/IssuePilot/ci.yml?branch=main&style=flat-square&label=CI&color=476D9E&labelColor=2E3E4C"></a>
   <img alt="Runs on GitHub Actions" src="https://img.shields.io/badge/runs_on-GitHub_Actions-476D9E?style=flat-square&labelColor=2E3E4C">
   <img alt="Claude Code, your own subscription" src="https://img.shields.io/badge/Claude_Code-your_subscription-C8B39B?style=flat-square&labelColor=2E3E4C">
   <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-8AA0B2?style=flat-square&labelColor=2E3E4C">
 </p>
 
 <p align="center">
+  <a href="#see-it-run">Demo</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#quality">Quality</a> ·
@@ -22,18 +24,41 @@ not verify. It runs Claude Code in GitHub Actions on your own Claude subscriptio
 is no server, and every file, line and quote it cites is checked against your code
 before anything is posted.
 
+## See it run
+
+<p align="center">
+  <a href="docs/assets/issuepilot-demo.mp4"><img src="docs/assets/issuepilot-demo.gif" alt="Demo, 20 seconds: a bug report is opened, the gate, investigate and publish jobs run in GitHub Actions, IssuePilot's comment appears with the cause, the cited lines and a fix, and the link opens those lines at the exact commit" width="100%"></a>
+</p>
+
+A 20-second recording from IssuePilot's private sandbox repository (the full-quality
+video is [`issuepilot-demo.mp4`](docs/assets/issuepilot-demo.mp4), 1 MB, a download):
+
+1. **Open an issue.** An invoice with a 3.75 TRY subtotal and 10% VAT prints 4.12 TRY
+   instead of 4.13.
+2. **Investigate.** The gate, investigate and publish jobs run in GitHub Actions. The
+   waiting is shortened; the whole run took 1 min 25 s.
+3. **Comment.** The cause (`to_cents` rounds floats with `round()`, which rounds ties to
+   even), the cited lines, a fix with `Decimal` and `ROUND_HALF_UP`, and what it could
+   not check.
+4. **Follow the code.** The link opens the cited lines at the exact commit.
+
 ## What you get
 
 <p align="center">
-  <img src="docs/assets/comment-example.png" alt="An IssuePilot comment on pytest-dev/pyfakefs#1304: the cause (FakeFileWrapper.seek returns None), a permalink to the lines, a suggested fix, what it is not sure about, and collapsed details" width="100%">
+  <img src="docs/assets/comment-example.png" alt="An IssuePilot comment on honojs/hono#5129: it confirms the reporter's diagnosis (parseFormData re-serializes a cached FormData with a new boundary), links the lines, suggests reusing the cached FormData, says what it did not check, and collapses the details" width="100%">
 </p>
 
-The comment above is IssuePilot's real output for
-[pytest-dev/pyfakefs#1304](https://github.com/pytest-dev/pyfakefs/issues/1304), replayed
-at the commit before the fix during the v1.0.0 backtest. The short part answers the
-reporter; evidence with quoted lines, suggested fixes, verification steps and
-assumptions are collapsed below it. Runs that fail post a plain reason instead, such as
-an expired token.
+The comment above is IssuePilot v1.3.0's real output for
+[honojs/hono#5129](https://github.com/honojs/hono/issues/5129), run in the field trial at
+the commit just before the fix. The reporter had already named a cause, so the comment
+says whether the code confirms it before adding anything; the real fix,
+[honojs/hono#5131](https://github.com/honojs/hono/pull/5131), reuses the cached FormData
+as suggested.
+
+The short part answers the reporter; evidence with quoted lines, suggested fixes,
+verification steps and assumptions are collapsed below it. Issues opened by bots or
+labelled as feature requests are left alone before any AI runs, and a run that fails
+posts a plain reason instead, such as an expired token.
 
 ## Quick start
 
@@ -62,21 +87,25 @@ cost and troubleshooting are in [docs/setup.md](docs/setup.md).
 
 ![IssuePilot architecture: a read-only Claude Code job returns JSON; a second job without AI verifies it, scans it for secrets and posts one comment](docs/assets/architecture-coast.png)
 
-1. A new issue starts the **investigate** job. Claude Code reads the issue as data,
-   explores the repository with read-only tools (`git grep`, `git log`, `git blame`,
-   `gh issue view`, ...) and returns its analysis as JSON that must match
-   [`schema/analysis.schema.json`](schema/analysis.schema.json). The prompt is
-   [`prompts/investigate.md`](prompts/investigate.md).
-2. That job holds a GitHub token that can only read, gets no tool that writes, and can
+1. A **gate** job without AI or token skips issues opened by bots and issues carrying
+   one of `skip_labels` (default `enhancement`, `feature`, `epic`) or `issuepilot:skip`.
+2. Every other new issue starts the **investigate** job. Claude Code reads the issue as
+   data, explores the repository with read-only tools (`git grep`, `git log`,
+   `git blame`, `gh issue view`, ...) and returns its analysis as JSON that must match
+   [`schema/analysis.schema.json`](schema/analysis.schema.json). Its first result is
+   sent back once with a checklist (the issue's error text searched across the whole
+   repository, the blamed function read to its end, every caller of the code a fix
+   changes, assumptions one read would settle) while tool budget remains. The prompt is [`prompts/investigate.md`](prompts/investigate.md).
+3. That job holds a GitHub token that can only read, gets no tool that writes, and can
    open files only inside the checkout. Your repository's own Claude Code settings,
    hooks and MCP servers are not loaded. A spend cap (US$0.50 by default) and a
-   tool-call budget bound every run.
-3. The **publish** job runs no AI. On a fresh checkout it checks every cited path, line
+   tool-call budget (40 by default) bound every run.
+4. The **publish** job runs no AI. On a fresh checkout it checks every cited path, line
    range and quote, corrects line numbers that moved, sets aside citations that do not
    hold, and lowers the stated confidence when evidence fails.
-4. It scans the whole analysis for credential shapes and for a marker value that only
+5. It scans the whole analysis for credential shapes and for a marker value that only
    exists in the investigate job's environment; a match blocks publication.
-5. It renders a short comment with the details collapsed, and creates or updates
+6. It renders a short comment with the details collapsed, and creates or updates
    IssuePilot's one comment on the issue.
 
 The design decisions, with the attacks and failures that shaped them, are in
@@ -84,20 +113,29 @@ The design decisions, with the attacks and failures that shaped them, are in
 
 ## Quality
 
-IssuePilot is measured, not just tried. [`evals/`](evals/README.md) replays issues
-whose right answer is known: closed issues from real repositories at the commit before
-their fix, and ten held-out scenarios written by a separate model that never saw the
-implementation ([`tests/acceptance/holdout/`](tests/acceptance/holdout/)). At v1.0.0:
+IssuePilot is measured, not just tried, in three ways:
 
-| Measure | Result |
+- **Held-out scenarios:** ten issues written by a separate model that never saw the
+  implementation ([`tests/acceptance/holdout/`](tests/acceptance/holdout/)).
+- **Backtests:** 23 closed issues from real repositories, replayed at the commit before
+  their fix ([`evals/`](evals/README.md)).
+- **Field trial:** 20 real issues, open and closed, from pydantic, pandas, black,
+  pytest, hono, vite and svelte, each comment reviewed by a separate model.
+
+| At v1.3.0 | Result |
 |---|---|
 | Held-out scenarios passed | 10 / 10 |
-| Real cases passed | 13 / 16 |
-| Real bugs where it pointed at the code the fix changed | 82% |
+| Backtests passed | 18 / 23, pointed at the code the fix changed in 87.5% |
+| Field trial: comments a maintainer would welcome | 17 / 20 (10 / 10 on closed issues) |
+| Field trial: unhelpful or harmful comments | 0 |
 | Wrong causes stated with high confidence | 0 |
-| Median run | about 20 s, about US$0.08 of list-price equivalent quota |
+| Median field-trial run | 11 turns, about US$0.13 of list-price equivalent quota |
 
-Details: [docs/runs/2026-10-21_m3-investigation-quality.md](docs/runs/2026-10-21_m3-investigation-quality.md).
+The field-trial issues were also used to make the v1.3 changes, so 17 / 20 is an upper
+bound for issues it has not seen; the held-out and backtest suites check that nothing
+else got worse. Details, including what is still weak:
+[field trial 2](docs/runs/2026-10-22_field-trial-2.md),
+[v1.0 quality report](docs/runs/2026-10-21_m3-investigation-quality.md).
 
 ## Scope
 
@@ -113,7 +151,8 @@ python -m pytest
 
 The publish step uses only the Python standard library. CI runs the tests and
 actionlint. Backtests run in this repository's Actions:
-`python evals/backtest.py run --suite evals/cases --ref <branch>`.
+`python evals/backtest.py run --suite evals/cases --ref <branch>`; field trials use
+`evals/field.py` ([`evals/README.md`](evals/README.md)).
 [`AGENTS.md`](AGENTS.md) holds the rules every change follows,
 [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) where the project stands, and
 [`CHANGELOG.md`](CHANGELOG.md) what each release brought.
