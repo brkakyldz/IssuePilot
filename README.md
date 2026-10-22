@@ -26,19 +26,24 @@ before anything is posted.
 
 ## See it run
 
-https://github.com/user-attachments/assets/20966839-5ce6-49e1-bec8-97fb8eccb7b0
+https://github.com/user-attachments/assets/1c9a514f-c1c2-4dcb-b7bb-00cdc6cc2a10
 
-A 20-second recording from IssuePilot's private sandbox repository
-([`issuepilot-demo.mp4`](docs/assets/issuepilot-demo.mp4)):
+A 46-second walk through one real run on the public demo repository
+[brkakyldz/issuepilot-demo](https://github.com/brkakyldz/issuepilot-demo/issues/1)
+([`issuepilot-demo.mp4`](docs/assets/issuepilot-demo.mp4)). Every screen is the CLI's
+output, a GitHub page or the run's own transcript:
 
-1. **Open an issue.** An invoice with a 3.75 TRY subtotal and 10% VAT prints 4.12 TRY
-   instead of 4.13.
-2. **Investigate.** The gate, investigate and publish jobs run in GitHub Actions. The
-   waiting is shortened; the whole run took 1 min 25 s.
-3. **Comment.** The cause (`to_cents` rounds floats with `round()`, which rounds ties to
-   even), the cited lines, a fix with `Decimal` and `ROUND_HALF_UP`, and what it could
-   not check.
-4. **Follow the code.** The link opens the cited lines at the exact commit.
+1. **The bug.** `python -m shelf list` ends page 1 with *The Odyssey*, and page 2 starts
+   with it again.
+2. **Open an issue.** The report quotes both outputs.
+3. **Run.** The gate, investigate and publish jobs start on their own, captured live in
+   GitHub Actions.
+4. **Investigate.** Claude Code's real tool calls, read-only, including
+   `git show f516257`, the commit that added the `+ 1`.
+5. **Verify.** The quoted lines are matched against a fresh checkout before anything is
+   posted.
+6. **Comment.** The cause, the cited lines, a suggested fix and what it is not sure about.
+7. **Follow the code.** The permalink opens lines 16–17 at the commit IssuePilot read.
 
 ## What you get
 
