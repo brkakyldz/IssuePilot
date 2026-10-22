@@ -37,8 +37,8 @@ Work is tracked as GitHub milestones and issues in brkakyldz/IssuePilot (public)
   `.github/workflows/backtest.yml`; CI runs pytest and actionlint.
 - `security/`: capability probe, injection issue, end-to-end self-test.
 - `docs/assets/issuepilot-demo.mp4`: a 20-second English demo from real sandbox
-  recordings (issue, run, comment, cited code); the README shows it as
-  `issuepilot-demo.gif`, linked to the mp4.
+  recordings (issue, run, comment, cited code); the README plays the same file from a
+  GitHub attachment, since GitHub does not play committed videos inline.
 - Releases v1.0.0 to v1.3.0. Sandbox `brkakyldz/issuepilot-sandbox` calls `@main`
   (and `@v1` by hand); brkakyldz/ArchDrawer and the ai-research-agent repository call `@v1`, which points at v1.3.0.
   v1.3.0 carries the field-trial changes.
