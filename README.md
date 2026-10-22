@@ -30,8 +30,8 @@ before anything is posted.
   <a href="docs/assets/issuepilot-demo.mp4"><img src="docs/assets/issuepilot-demo.gif" alt="Demo, 20 seconds: a bug report is opened, the gate, investigate and publish jobs run in GitHub Actions, IssuePilot's comment appears with the cause, the cited lines and a fix, and the link opens those lines at the exact commit" width="100%"></a>
 </p>
 
-A 20-second recording from IssuePilot's private sandbox repository
-([full-quality video](docs/assets/issuepilot-demo.mp4)):
+A 20-second recording from IssuePilot's private sandbox repository (the full-quality
+video is [`issuepilot-demo.mp4`](docs/assets/issuepilot-demo.mp4), 1 MB, a download):
 
 1. **Open an issue.** An invoice with a 3.75 TRY subtotal and 10% VAT prints 4.12 TRY
    instead of 4.13.
