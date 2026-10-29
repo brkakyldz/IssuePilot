@@ -1,129 +1,156 @@
-<p align="center">
-  <img src="docs/assets/hero.jpg" alt="IssuePilot: every new issue gets one investigated comment, checked against your code before it is posted" width="100%">
-</p>
+# IssuePilot
 
-<p align="center">
-  <a href="https://github.com/brkakyldz/IssuePilot/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/brkakyldz/IssuePilot?style=flat-square&color=5D768B&labelColor=2E3E4C"></a>
-  <a href="https://github.com/brkakyldz/IssuePilot/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/brkakyldz/IssuePilot/ci.yml?branch=main&style=flat-square&label=CI&color=476D9E&labelColor=2E3E4C"></a>
-  <img alt="Runs on GitHub Actions" src="https://img.shields.io/badge/runs_on-GitHub_Actions-476D9E?style=flat-square&labelColor=2E3E4C">
-  <img alt="Claude Code, your own subscription" src="https://img.shields.io/badge/Claude_Code-your_subscription-C8B39B?style=flat-square&labelColor=2E3E4C">
-  <img alt="License MIT" src="https://img.shields.io/badge/license-MIT-8AA0B2?style=flat-square&labelColor=2E3E4C">
-</p>
+A reusable GitHub Actions workflow that investigates every new issue with Claude Code
+and posts one comment: the likely cause, the lines involved, a suggested fix, and what
+it could not verify.
 
-<p align="center">
-  <a href="#see-it-run">Demo</a> ·
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#how-it-works">How it works</a> ·
-  <a href="#quality">Quality</a> ·
-  <a href="docs/setup.md">Setup guide</a>
-</p>
+[![Latest release](https://img.shields.io/github/v/release/brkakyldz/IssuePilot)](https://github.com/brkakyldz/IssuePilot/releases/latest)
+[![CI](https://github.com/brkakyldz/IssuePilot/actions/workflows/ci.yml/badge.svg)](https://github.com/brkakyldz/IssuePilot/actions/workflows/ci.yml)
 
-IssuePilot investigates every new GitHub issue in your repository and posts one
-comment: the likely cause, where it is in the code, a suggested fix, and what it could
-not verify. It runs Claude Code in GitHub Actions on your own Claude subscription. There
-is no server, and every file, line and quote it cites is checked against your code
-before anything is posted.
-
-## See it run
-
-https://github.com/user-attachments/assets/1c9a514f-c1c2-4dcb-b7bb-00cdc6cc2a10
-
-A 46-second walk through one real run on the public demo repository
-[brkakyldz/issuepilot-demo](https://github.com/brkakyldz/issuepilot-demo/issues/1)
-([`issuepilot-demo.mp4`](docs/assets/issuepilot-demo.mp4)). Every screen is the CLI's
-output, a GitHub page or the run's own transcript:
-
-1. **The bug.** `python -m shelf list` ends page 1 with *The Odyssey*, and page 2 starts
-   with it again.
-2. **Open an issue.** The report quotes both outputs.
-3. **Run.** The gate, investigate and publish jobs start on their own, captured live in
-   GitHub Actions.
-4. **Investigate.** Claude Code's real tool calls, read-only, including
-   `git show f516257`, the commit that added the `+ 1`.
-5. **Verify.** The quoted lines are matched against a fresh checkout before anything is
-   posted.
-6. **Comment.** The cause, the cited lines, a suggested fix and what it is not sure about.
-7. **Follow the code.** The permalink opens lines 16–17 at the commit IssuePilot read.
-
-## What you get
-
-<p align="center">
-  <img src="docs/assets/comment-example.png" alt="An IssuePilot comment on honojs/hono#5129: it confirms the reporter's diagnosis (parseFormData re-serializes a cached FormData with a new boundary), links the lines, suggests reusing the cached FormData, says what it did not check, and collapses the details" width="100%">
-</p>
-
-The comment above is IssuePilot v1.3.0's real output for
-[honojs/hono#5129](https://github.com/honojs/hono/issues/5129), run in the field trial at
-the commit just before the fix. The reporter had already named a cause, so the comment
-says whether the code confirms it before adding anything; the real fix,
-[honojs/hono#5131](https://github.com/honojs/hono/pull/5131), reuses the cached FormData
-as suggested.
-
-The short part answers the reporter; evidence with quoted lines, suggested fixes,
-verification steps and assumptions are collapsed below it. Issues opened by bots or
-labelled as feature requests are left alone before any AI runs, and a run that fails
-posts a plain reason instead, such as an expired token.
+It runs on your own Claude subscription, needs no server, and checks every file, line
+and quote it cites against your code before the comment is posted.
 
 ## Quick start
 
-1. Create a token on your machine: `claude setup-token` (Claude Pro or Max).
-2. Add it to your repository as the Actions secret `CLAUDE_CODE_OAUTH_TOKEN`:
-   `gh secret set CLAUDE_CODE_OAUTH_TOKEN`.
-3. Copy [`templates/issuepilot.yml`](templates/issuepilot.yml) to
-   `.github/workflows/issuepilot.yml`:
+You need a Claude Pro or Max subscription and
+[Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed on your machine.
+
+**1.** Create a token:
+
+```bash
+claude setup-token
+```
+
+**2.** Store it in your repository as the Actions secret `CLAUDE_CODE_OAUTH_TOKEN`:
+
+```bash
+gh secret set CLAUDE_CODE_OAUTH_TOKEN
+```
+
+**3.** Add `.github/workflows/issuepilot.yml`, a copy of
+[`templates/issuepilot.yml`](templates/issuepilot.yml):
 
 ```yaml
+name: IssuePilot
+
 on:
   issues:
     types: [opened]
+  # Run it by hand on an existing issue: Actions > IssuePilot > Run workflow.
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Issue number to investigate
+        required: true
+
+permissions: {}
+
 jobs:
   issuepilot:
     uses: brkakyldz/IssuePilot/.github/workflows/issuepilot.yml@v1
-    permissions: {contents: read, issues: write, pull-requests: read}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    with:
+      issue_number: ${{ inputs.issue_number }}
+      language: English
 ```
 
-The next issue gets a comment within a minute or two. Options (language, model, limits),
-cost and troubleshooting are in [docs/setup.md](docs/setup.md).
+The next issue opened in the repository gets a comment within a minute or two.
+Troubleshooting and cost are in [docs/setup.md](docs/setup.md).
+
+## What it does
+
+A real run on the public demo repository
+[brkakyldz/issuepilot-demo](https://github.com/brkakyldz/issuepilot-demo/issues/1).
+
+### 1. Someone opens an issue
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/issue-dark.png">
+  <img alt="Issue #1 on brkakyldz/issuepilot-demo, 'Page 2 repeats the last book of page 1': the reporter shows the output of python -m shelf list and python -m shelf list --page 2, where The Odyssey appears on both pages, and expects ten books per page with no repeats" src="docs/assets/issue-light.png" width="746">
+</picture>
+
+### 2. IssuePilot replies
+
+About a minute later, as `github-actions`:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/reply-dark.png">
+  <img alt="IssuePilot's comment: Bug analysis, confidence high. Cause: commit f516257 made paginate slice one item too many (per_page + 1). Where: shelf/pagination.py lines 16 to 17, embedded. Suggestion: set end = start + per_page and add a regression test. Not sure about: runtime output was not checked. A collapsed section holds the evidence, and the footer says read-only, code not run, commit f516257, 12 turns, 19 s, with a link to the run log" src="docs/assets/reply-light.png" width="732">
+</picture>
+
+The short part answers the reporter; the evidence with quoted lines, verification steps
+and assumptions are collapsed under it. Issues opened by bots or carrying a skip label
+are left alone before any AI runs, and a run that fails posts a plain reason instead,
+such as an expired token.
+
+The run behind it, in GitHub Actions:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/run-dark.png">
+  <img alt="The GitHub Actions run summary: triggered by the issue, status Success, total duration 1m 4s, jobs issuepilot / gate (3s), issuepilot / investigate (45s) and issuepilot / publish (8s)" src="docs/assets/run-light.png">
+</picture>
+
+A 46-second video of the same run, from the bug to the cited code:
+
+https://github.com/user-attachments/assets/1c9a514f-c1c2-4dcb-b7bb-00cdc6cc2a10
 
 ## How it works
 
-![IssuePilot architecture: a read-only Claude Code job returns JSON; a second job without AI verifies it, scans it for secrets and posts one comment](docs/assets/architecture-coast.png)
+1. **Gate.** A job without AI or token skips issues opened by bots and issues carrying
+   one of `skip_labels` or `issuepilot:skip`.
+2. **Investigate.** Claude Code reads the issue as data, explores the repository with
+   read-only tools (`git grep`, `git log`, `git blame`, `gh issue view`, ...) and returns
+   JSON that must match [`schema/analysis.schema.json`](schema/analysis.schema.json).
+   The prompt is [`prompts/investigate.md`](prompts/investigate.md).
+3. **Verify.** A second job with no AI checks every cited path, line range and quote on
+   a fresh checkout, corrects line numbers that moved, sets aside citations that do not
+   hold, and lowers the confidence when evidence fails.
+4. **Leak scan.** The analysis is scanned for credential shapes and for a marker that
+   only exists in the investigate job; a match blocks publication.
+5. **Comment.** It creates or updates IssuePilot's one comment on the issue.
 
-1. A **gate** job without AI or token skips issues opened by bots and issues carrying
-   one of `skip_labels` (default `enhancement`, `feature`, `epic`) or `issuepilot:skip`.
-2. Every other new issue starts the **investigate** job. Claude Code reads the issue as
-   data, explores the repository with read-only tools (`git grep`, `git log`,
-   `git blame`, `gh issue view`, ...) and returns its analysis as JSON that must match
-   [`schema/analysis.schema.json`](schema/analysis.schema.json). Its first result is
-   sent back once with a checklist (the issue's error text searched across the whole
-   repository, the blamed function read to its end, every caller of the code a fix
-   changes, assumptions one read would settle) while tool budget remains. The prompt is [`prompts/investigate.md`](prompts/investigate.md).
-3. That job holds a GitHub token that can only read, gets no tool that writes, and can
-   open files only inside the checkout. Your repository's own Claude Code settings,
-   hooks and MCP servers are not loaded. A spend cap (US$0.50 by default) and a
-   tool-call budget (40 by default) bound every run.
-4. The **publish** job runs no AI. On a fresh checkout it checks every cited path, line
-   range and quote, corrects line numbers that moved, sets aside citations that do not
-   hold, and lowers the stated confidence when evidence fails.
-5. It scans the whole analysis for credential shapes and for a marker value that only
-   exists in the investigate job's environment; a match blocks publication.
-6. It renders a short comment with the details collapsed, and creates or updates
-   IssuePilot's one comment on the issue.
+The decisions behind this design are in [`docs/decisions/`](docs/decisions/).
 
-The design decisions, with the attacks and failures that shaped them, are in
-[`docs/decisions/`](docs/decisions/).
+## Inputs
+
+Set these under `with:` in your workflow. More in [docs/setup.md](docs/setup.md).
+
+| Name | Description | Default |
+|---|---|---|
+| `issue_number` | Issue to investigate; defaults to the issue of the triggering event. | `""` |
+| `language` | Language of the analysis and the comment. | `English` |
+| `model` | Claude model alias or name. | `sonnet` |
+| `max_turns` | Claude Code's turn limit; the tool-call budget is the real bound. | `60` |
+| `max_tool_calls` | Hard bound on the agent's tool calls. | `40` |
+| `max_cost_usd` | Hard bound on one run's spend at list-price equivalent. | `0.5` |
+| `skip_labels` | Comma-separated labels; a new issue carrying one is not investigated. `issuepilot:skip` always applies. | `enhancement,feature,epic` |
+
+Secret: `CLAUDE_CODE_OAUTH_TOKEN` (required), from `claude setup-token`.
+
+## Security
+
+- The investigating job gets `contents: read`, `issues: read` and `pull-requests: read`,
+  and no tool that writes. Only the publish job, which runs no AI, has `issues: write`.
+- Claude Code's file tools are confined to the checkout, and your repository's own
+  Claude Code settings, hooks and MCP servers are not loaded.
+- Every run is bounded by `max_cost_usd`, `max_tool_calls`, `max_turns` and job
+  timeouts, and one issue never has two runs at the same time.
+
+> [!IMPORTANT]
+> IssuePilot investigates and suggests. It never edits files, opens pull requests or
+> runs your repository's code.
 
 ## Quality
 
-IssuePilot is measured, not just tried, in three ways:
-
-- **Held-out scenarios:** ten issues written by a separate model that never saw the
-  implementation ([`tests/acceptance/holdout/`](tests/acceptance/holdout/)).
-- **Backtests:** 23 closed issues from real repositories, replayed at the commit before
-  their fix ([`evals/`](evals/README.md)).
-- **Field trial:** 20 real issues, open and closed, from pydantic, pandas, black,
-  pytest, hono, vite and svelte, each comment reviewed by a separate model.
+Measured three ways at v1.3.0: ten held-out scenarios written by a separate model
+([`tests/acceptance/holdout/`](tests/acceptance/holdout/)), 23 backtests on closed issues
+from real repositories ([`evals/`](evals/README.md)), and a field trial on 20 real issues
+from pydantic, pandas, black, pytest, hono, vite and svelte.
 
 | At v1.3.0 | Result |
 |---|---|
@@ -134,16 +161,8 @@ IssuePilot is measured, not just tried, in three ways:
 | Wrong causes stated with high confidence | 0 |
 | Median field-trial run | 11 turns, about US$0.13 of list-price equivalent quota |
 
-The field-trial issues were also used to make the v1.3 changes, so 17 / 20 is an upper
-bound for issues it has not seen; the held-out and backtest suites check that nothing
-else got worse. Details, including what is still weak:
-[field trial 2](docs/runs/2026-10-22_field-trial-2.md),
-[v1.0 quality report](docs/runs/2026-10-21_m3-investigation-quality.md).
-
-## Scope
-
-IssuePilot investigates and suggests. It never edits files, opens pull requests or
-runs your repository's code.
+The field-trial issues also shaped v1.3, so 17 / 20 is an upper bound for unseen
+issues. Details and weak spots: [field trial 2](docs/runs/2026-10-22_field-trial-2.md).
 
 ## Development
 
@@ -152,13 +171,10 @@ python -m pip install pytest pyyaml
 python -m pytest
 ```
 
-The publish step uses only the Python standard library. CI runs the tests and
-actionlint. Backtests run in this repository's Actions:
-`python evals/backtest.py run --suite evals/cases --ref <branch>`; field trials use
-`evals/field.py` ([`evals/README.md`](evals/README.md)).
-[`AGENTS.md`](AGENTS.md) holds the rules every change follows,
-[`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md) where the project stands, and
-[`CHANGELOG.md`](CHANGELOG.md) what each release brought.
+The publish step uses only the Python standard library; CI runs the tests and
+actionlint. Backtests and field trials are described in [`evals/README.md`](evals/README.md),
+the rules every change follows in [`AGENTS.md`](AGENTS.md), and each release in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ## License
 
